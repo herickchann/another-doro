@@ -261,7 +261,7 @@ textarea,
 }
 
 .time {
-    font-size: 32px;
+    font-size: 48px;
     font-weight: 300;
     color: var(--text-primary);
     margin-bottom: 4px;
@@ -329,6 +329,20 @@ textarea,
 
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-tertiary {
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.btn-tertiary:hover {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff8a8a;
+    border-color: rgba(255, 107, 107, 0.5);
 }
 
 .btn-danger {

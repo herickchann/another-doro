@@ -80,6 +80,7 @@ class PomodoroTimer {
         this.sessionNumber = document.getElementById('sessionNumber');
         this.startPauseBtn = document.getElementById('startPauseBtn');
         this.resetBtn = document.getElementById('resetBtn');
+        this.skipBtn = document.getElementById('skipBtn');
         this.progressCircle = document.getElementById('progressCircle');
         this.timerCircle = document.querySelector('.timer-circle');
 
@@ -145,7 +146,8 @@ class PomodoroTimer {
 
     setupEventListeners() {
         this.startPauseBtn.addEventListener('click', () => this.toggleTimer());
-        this.resetBtn.addEventListener('click', () => this.resetTimer());
+        this.resetBtn.addEventListener('click', () => this.resetPomodoroSession());
+        this.skipBtn.addEventListener('click', () => this.skipBreak());
 
         // Settings modal listeners
         this.settingsBtn.addEventListener('click', () => this.openSettingsModal());
@@ -246,6 +248,59 @@ class PomodoroTimer {
         this.updateDisplay();
         this.updateProgressRing();
         this.updateTrayTitle();
+        this.updateSkipButtonVisibility();
+    }
+
+    resetPomodoroSession() {
+        // Reset the entire pomodoro session
+        this.isRunning = false;
+        this.isPaused = false;
+        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
+        this.timerCircle.classList.remove('active');
+        clearInterval(this.timerInterval);
+
+        // Reset session data
+        this.sessionCount = 0;
+        this.currentSessionType = 'work';
+
+        this.setTimerForCurrentSession();
+        this.updateDisplay();
+        this.updateProgressRing();
+        this.updateSessionDisplay();
+        this.updateTrayTitle();
+        this.updateSkipButtonVisibility();
+
+        this.showNotification('Session Reset', 'Pomodoro session has been reset to the beginning! 🔄');
+    }
+
+    skipBreak() {
+        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
+            // Stop current timer
+            this.isRunning = false;
+            this.isPaused = false;
+            clearInterval(this.timerInterval);
+            this.timerCircle.classList.remove('active');
+
+            // Switch to work session
+            this.currentSessionType = 'work';
+            this.setTimerForCurrentSession();
+            this.updateDisplay();
+            this.updateProgressRing();
+            this.updateSessionDisplay();
+            this.updateTrayTitle();
+            this.updateSkipButtonVisibility();
+
+            this.showNotification('Break Skipped', 'Back to work! Time to focus! 🎯');
+            this.saveSettings();
+        }
+    }
+
+    updateSkipButtonVisibility() {
+        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
+            this.skipBtn.style.display = 'flex';
+        } else {
+            this.skipBtn.style.display = 'none';
+        }
     }
 
     setTimerForCurrentSession() {
@@ -311,6 +366,7 @@ class PomodoroTimer {
         this.saveStats();
         this.saveSettings();
         this.updateTrayTitle();
+        this.updateSkipButtonVisibility();
 
         // Auto-start next session if enabled
         if ((this.currentSessionType !== 'work' && this.autoBreak) ||
@@ -602,6 +658,7 @@ class PomodoroTimer {
             this.updateDisplay();
             this.updateProgressRing();
             this.updateProgressRingColors();
+            this.updateSkipButtonVisibility();
 
             console.log('Progress ring initialized:', {
                 radius,
