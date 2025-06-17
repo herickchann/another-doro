@@ -1,17 +1,17 @@
 {
   "name": "anotherdoro",
-  "version": "1.0.7",
+  "version": "1.0.1",
   "description": "AnotherDoro - A beautiful Pomodoro timer app",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "NODE_ENV=development electron .",
     "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "build:android": "node build-android.js",
-    "build:android-release": "node build-android.js --release",
+    "build:mac": "node scripts/build-mac-versioned.js",
+    "build:win": "node scripts/build-win-versioned.js",
+    "build:linux": "node scripts/build-linux-versioned.js",
+    "build:android": "node scripts/build-android-versioned.js",
+    "build:android-release": "node scripts/build-android-versioned.js --release",
     "build:all": "node scripts/build-versioned.js",
     "build:all-legacy": "npm run build:mac && npm run build:android-release",
     "dist": "electron-builder --publish=never",
@@ -27,6 +27,7 @@
     "publish:major": "node scripts/publish-with-version.js major",
     "publish:now": "node scripts/publish-with-version.js patch",
     "publish:all": "npm run build:all && npm run publish:mac && npm run publish:android",
+    "edit-release-notes": "node scripts/edit-release-notes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
