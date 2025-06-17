@@ -278,7 +278,23 @@ class PomodoroTimer {
     updateDisplay() {
         const minutes = Math.floor(this.currentTime / 60);
         const seconds = this.currentTime % 60;
-        this.timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        const newTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Only animate if the time actually changed
+        if (this.timeDisplay.textContent !== newTime) {
+            // Add animation class
+            this.timeDisplay.classList.add('changing');
+
+            // Update the text after a brief delay to sync with animation
+            setTimeout(() => {
+                this.timeDisplay.textContent = newTime;
+            }, 100); // Quarter of the animation duration for smooth text change
+
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                this.timeDisplay.classList.remove('changing');
+            }, 400);
+        }
     }
 
     updateProgressRing() {
