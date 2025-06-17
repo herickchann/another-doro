@@ -170,7 +170,7 @@ class PublishManager {
         }
 
         console.log(`\n🎉 Publish process completed for version ${newVersion}!`);
-        console.log(`🔗 Check your release at: https://github.com/herickchannn/another-doro/releases/tag/v${newVersion}`);
+        console.log(`🔗 Check your release at: https://github.com/herickchann/another-doro/releases/tag/v${newVersion}`);
     }
 }
 

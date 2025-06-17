@@ -7,6 +7,10 @@ const path = require('path');
 console.log('🍅 AnotherDoro Android Build Script');
 console.log('=====================================\n');
 
+// Get current version from package.json
+const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const version = packageJson.version;
+
 // Check if we're building release or debug
 const isRelease = process.argv.includes('--release');
 const buildType = isRelease ? 'release' : 'debug';
@@ -66,10 +70,11 @@ try {
     // Step 4: Find and copy APK to dist folder
     console.log('📋 Step 4: Locating and moving APK to dist folder...');
 
-    // Ensure dist directory exists
-    if (!fs.existsSync('dist')) {
-        fs.mkdirSync('dist', { recursive: true });
-        console.log('   📁 Created dist directory');
+    // Ensure version-specific dist directory exists
+    const versionDir = path.join('dist', `v${version}`);
+    if (!fs.existsSync(versionDir)) {
+        fs.mkdirSync(versionDir, { recursive: true });
+        console.log(`   📁 Created version directory: ${versionDir}`);
     }
 
     const apkDir = isRelease
@@ -86,9 +91,9 @@ try {
 
         if (apkFile) {
             const sourcePath = path.join(apkDir, apkFile);
-            const destPath = path.join('dist', `AnotherDoro-1.0.0-${buildType}.apk`);
+            const destPath = path.join(versionDir, `AnotherDoro-${version}-${buildType}.apk`);
 
-            // Copy APK to dist directory
+            // Copy APK to version-specific directory
             fs.copyFileSync(sourcePath, destPath);
 
             // Get file size
@@ -99,7 +104,7 @@ try {
             console.log(`   📦 Size: ${fileSizeInMB} MB\n`);
 
             console.log('🎉 Android build completed successfully!');
-            console.log(`📱 APK ready in dist folder: ${destPath}`);
+            console.log(`📱 APK ready in version folder: ${destPath}`);
 
             if (isRelease) {
                 console.log('\n⚠️  Note: Release APK needs to be signed for distribution');

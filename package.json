@@ -12,7 +12,8 @@
     "build:linux": "electron-builder --linux",
     "build:android": "node build-android.js",
     "build:android-release": "node build-android.js --release",
-    "build:all": "npm run build:mac && npm run build:android-release",
+    "build:all": "node scripts/build-versioned.js",
+    "build:all-legacy": "npm run build:mac && npm run build:android-release",
     "dist": "electron-builder --publish=never",
     "version:patch": "node scripts/increment-version.js patch",
     "version:minor": "node scripts/increment-version.js minor",
@@ -20,11 +21,12 @@
     "version:show": "node scripts/increment-version.js show",
     "preversion": "npm run version:show",
     "publish": "electron-builder --publish=always",
+    "publish:mac": "node scripts/publish-mac.js",
     "publish:patch": "node scripts/publish-with-version.js patch",
     "publish:minor": "node scripts/publish-with-version.js minor",
     "publish:major": "node scripts/publish-with-version.js major",
-    "publish:all": "npm run build:all && npm run publish && npm run publish:android",
-    "publish:now": "npm run build:all && npm run publish && npm run publish:android",
+    "publish:all": "npm run build:all && npm run publish:mac && npm run publish:android",
+    "publish:now": "npm run build:all && npm run publish:mac && npm run publish:android",
     "publish:android": "node scripts/publish-android.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -54,7 +56,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "herickchannn",
+        "owner": "herickchann",
         "repo": "another-doro"
       }
     ],

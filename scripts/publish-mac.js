@@ -1,9 +1,11 @@
+#!/usr/bin/env node
+
 const { Octokit } = require('@octokit/rest');
 const fs = require('fs');
 const path = require('path');
 const packageJson = require('../package.json');
 
-async function publishAndroidAPK() {
+async function publishMacOS() {
     // Check for GitHub token
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -20,36 +22,35 @@ async function publishAndroidAPK() {
     const repo = 'another-doro';
     const version = packageJson.version;
     const tagName = `v${version}`;
+    const versionDir = path.join(__dirname, '..', 'dist', `v${version}`);
 
     try {
-        console.log(`📱 Publishing Android APK for version ${version}...`);
+        console.log(`🖥️  Publishing macOS builds for version ${version}...`);
 
-        // Find the APK file - first check version directory, then fallback to build directory
-        const versionDir = path.join(__dirname, '..', 'dist', `v${version}`);
-        const versionApkPath = path.join(versionDir, `AnotherDoro-${version}-release.apk`);
-        const apkPath = path.join(__dirname, '../android/app/build/outputs/apk/release/app-release.apk');
-        const apkPathUnsigned = path.join(__dirname, '../android/app/build/outputs/apk/release/app-release-unsigned.apk');
+        // Find the macOS files in version directory
+        const dmgPath = path.join(versionDir, `AnotherDoro-${version}-arm64.dmg`);
+        const zipPath = path.join(versionDir, `AnotherDoro-${version}-arm64-mac.zip`);
+        const ymlPath = path.join(versionDir, 'latest-mac.yml');
 
-        let finalApkPath;
-        if (fs.existsSync(versionApkPath)) {
-            finalApkPath = versionApkPath;
-            console.log('📦 Using APK from version directory');
-        } else if (fs.existsSync(apkPath)) {
-            finalApkPath = apkPath;
-            console.log('📦 Using APK from build directory');
-        } else if (fs.existsSync(apkPathUnsigned)) {
-            finalApkPath = apkPathUnsigned;
-            console.log('📦 Using unsigned APK from build directory');
-        } else {
-            console.error('❌ APK file not found. Make sure to run "npm run build:all" or "npm run build:android-release" first');
-            console.error(`   Checked paths:`);
-            console.error(`   - ${versionApkPath}`);
-            console.error(`   - ${apkPath}`);
-            console.error(`   - ${apkPathUnsigned}`);
+        // Check if files exist
+        const filesToUpload = [];
+        if (fs.existsSync(dmgPath)) {
+            filesToUpload.push({ path: dmgPath, name: `AnotherDoro-v${version}-mac.dmg`, contentType: 'application/octet-stream' });
+        }
+        if (fs.existsSync(zipPath)) {
+            filesToUpload.push({ path: zipPath, name: `AnotherDoro-v${version}-mac.zip`, contentType: 'application/zip' });
+        }
+        if (fs.existsSync(ymlPath)) {
+            filesToUpload.push({ path: ymlPath, name: 'latest-mac.yml', contentType: 'text/yaml' });
+        }
+
+        if (filesToUpload.length === 0) {
+            console.error('❌ No macOS build files found. Make sure to run "npm run build:all" first');
+            console.error(`   Checked directory: ${versionDir}`);
             process.exit(1);
         }
 
-        console.log(`📦 Found APK: ${finalApkPath}`);
+        console.log(`📦 Found ${filesToUpload.length} macOS files to upload`);
 
         // Check if release exists
         let release;
@@ -109,45 +110,45 @@ Desktop versions now support automatic updates! The app will notify you when new
             }
         }
 
-        // Check if APK asset already exists
-        const existingAsset = release.assets.find(asset =>
-            asset.name.includes('.apk') || asset.name.includes('android')
-        );
-
-        if (existingAsset) {
-            console.log('🗑️ Removing existing Android asset...');
-            await octokit.rest.repos.deleteReleaseAsset({
-                owner,
-                repo,
-                asset_id: existingAsset.id,
-            });
+        // Remove existing macOS assets
+        for (const asset of release.assets) {
+            if (asset.name.includes('.dmg') || asset.name.includes('-mac.zip') || asset.name.includes('latest-mac.yml')) {
+                console.log(`🗑️ Removing existing macOS asset: ${asset.name}`);
+                await octokit.rest.repos.deleteReleaseAsset({
+                    owner,
+                    repo,
+                    asset_id: asset.id,
+                });
+            }
         }
 
-        // Read the APK file
-        const apkBuffer = fs.readFileSync(finalApkPath);
-        const apkStats = fs.statSync(finalApkPath);
-        const apkFileName = `AnotherDoro-v${version}-android.apk`;
+        // Upload each file
+        for (const file of filesToUpload) {
+            const fileBuffer = fs.readFileSync(file.path);
+            const fileStats = fs.statSync(file.path);
 
-        console.log(`⬆️ Uploading ${apkFileName} (${(apkStats.size / 1024 / 1024).toFixed(2)} MB)...`);
+            console.log(`⬆️ Uploading ${file.name} (${(fileStats.size / 1024 / 1024).toFixed(2)} MB)...`);
 
-        // Upload the APK
-        await octokit.rest.repos.uploadReleaseAsset({
-            owner,
-            repo,
-            release_id: release.id,
-            name: apkFileName,
-            data: apkBuffer,
-            headers: {
-                'content-type': 'application/vnd.android.package-archive',
-                'content-length': apkStats.size,
-            },
-        });
+            await octokit.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.id,
+                name: file.name,
+                data: fileBuffer,
+                headers: {
+                    'content-type': file.contentType,
+                    'content-length': fileStats.size,
+                },
+            });
 
-        console.log('✅ Android APK uploaded successfully!');
+            console.log(`   ✅ ${file.name} uploaded successfully`);
+        }
+
+        console.log('🎉 macOS builds published successfully!');
         console.log(`🔗 Release URL: ${release.html_url}`);
 
     } catch (error) {
-        console.error('❌ Failed to publish Android APK:', error.message);
+        console.error('❌ Failed to publish macOS builds:', error.message);
         if (error.response) {
             console.error('Response:', error.response.data);
         }
@@ -157,7 +158,7 @@ Desktop versions now support automatic updates! The app will notify you when new
 
 // Run the function if this script is executed directly
 if (require.main === module) {
-    publishAndroidAPK();
+    publishMacOS();
 }
 
-module.exports = { publishAndroidAPK }; 
+module.exports = { publishMacOS }; 
