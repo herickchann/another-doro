@@ -93,11 +93,11 @@
 
         <main class="timer-section">
             <div class="timer-circle">
-                <svg class="progress-ring" width="200" height="200">
-                    <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent" r="92"
-                        cx="100" cy="100" />
-                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="92"
-                        cx="100" cy="100" id="progressCircle" />
+                <svg class="progress-ring" width="250" height="250">
+                    <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent"
+                        r="117" cx="125" cy="125" />
+                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="117"
+                        cx="125" cy="125" id="progressCircle" />
                 </svg>
                 <div class="timer-display">
                     <div class="time" id="timeDisplay">25:00</div>
@@ -111,6 +111,14 @@
                 </button>
                 <button class="btn btn-secondary" id="resetBtn">
                     <span class="btn-text">Reset</span>
+                </button>
+                <button class="btn btn-tertiary" id="skipBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5,4 15,12 5,20"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19"></line>
+                    </svg>
+                    <span class="btn-text">Skip</span>
                 </button>
             </div>
         </main>
@@ -254,6 +262,23 @@
                                     </div>
                                 </div>
                                 <div class="setting-group">
+                                    <label for="autoUpdateCheck">Auto-check for updates</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="autoUpdateCheck" checked>
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="updateCheckInterval">Check interval</label>
+                                    <select id="updateCheckInterval">
+                                        <option value="1">Every hour</option>
+                                        <option value="6">Every 6 hours</option>
+                                        <option value="12">Every 12 hours</option>
+                                        <option value="24" selected>Daily</option>
+                                        <option value="168">Weekly</option>
+                                    </select>
+                                </div>
+                                <div class="setting-group">
                                     <button class="btn btn-primary" id="checkUpdatesBtn">Check for Updates</button>
                                     <div class="update-status" id="updateStatus"></div>
 
@@ -296,6 +321,13 @@
                                             class="volume-slider">
                                         <span class="volume-value" id="volumeValue">70%</span>
                                     </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="soundSelector">Notification Sound</label>
+                                    <select id="soundSelector">
+                                        <option value="timer-finish.wav">Classic Timer</option>
+                                        <option value="doro-sound.mp3">Doro Bell</option>
+                                    </select>
                                 </div>
                                 <div class="setting-group">
                                     <button class="btn btn-secondary" id="testSoundBtn">Test Sound</button>

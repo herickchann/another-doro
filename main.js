@@ -49,7 +49,7 @@ function loadManualWindowState() {
     return {
         x: undefined,
         y: undefined,
-        width: 420,
+        width: 440,
         height: 680,
         isMaximized: false
     };
@@ -171,7 +171,7 @@ function createWindow() {
     mainWindowState = windowStateKeeper({
         defaultWidth: manualState.width,
         defaultHeight: manualState.height,
-        minWidth: 380,
+        minWidth: 400,
         minHeight: 620,
         file: 'window-state.json',
         maximize: false,
@@ -190,17 +190,18 @@ function createWindow() {
 
     // Create the browser window
     mainWindow = new BrowserWindow({
-        width: windowOptions.width || 427,
+        width: windowOptions.width || 447,
         height: windowOptions.height || 949,
         x: windowOptions.x,
         y: windowOptions.y,
-        minWidth: 380,
+        minWidth: 400,
         minHeight: 620,
         resizable: true,
         fullscreenable: false,
         titleBarStyle: 'hiddenInset',
         title: 'AnotherDoro',
         icon: path.join(__dirname, 'assets', 'tray-icon.png'),
+        backgroundColor: '#0f0f0f',
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,

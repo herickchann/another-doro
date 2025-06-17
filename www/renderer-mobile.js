@@ -36,12 +36,19 @@ class PomodoroTimer {
         // Progress ring
         this.circumference = 0;
 
+        // Auto-update settings
+        this.autoUpdateCheck = true; // Default: enabled
+        this.updateCheckInterval = 24; // Default: 24 hours (daily)
+        this.autoUpdateTimer = null;
+        this.lastUpdateCheck = null;
+
         this.initializeElements();
         this.setupEventListeners();
         this.setupGoalEventListeners();
         this.setupThemeEventListener();
         this.setupHotkeyListeners();
         this.setupTabListeners();
+        this.setupAutoHideScrollbars();
         this.loadSettings();
         this.loadStats();
         this.loadGoals();
@@ -95,6 +102,10 @@ class PomodoroTimer {
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
 
+        // Auto-update elements
+        this.autoUpdateCheckToggle = document.getElementById('autoUpdateCheck');
+        this.updateCheckIntervalSelect = document.getElementById('updateCheckInterval');
+
         // Stats
         this.completedSessionsDisplay = document.getElementById('completedSessions');
         this.totalTimeDisplay = document.getElementById('totalTime');
@@ -145,20 +156,62 @@ class PomodoroTimer {
             }
         });
 
-        // Auto-start toggle listeners
-        if (this.autoBreakToggle) {
-            this.autoBreakToggle.addEventListener('change', () => {
-                this.autoBreak = this.autoBreakToggle.checked;
-                this.saveSettings();
-            });
-        }
+        // Use document.addEventListener with delegation for more reliable event handling
+        document.addEventListener('change', (e) => {
+            console.log('Change event detected on:', e.target.id, 'checked:', e.target.checked);
 
-        if (this.autoWorkToggle) {
-            this.autoWorkToggle.addEventListener('change', () => {
-                this.autoWork = this.autoWorkToggle.checked;
+            if (e.target.id === 'autoStartBreaks') {
+                console.log('Auto break toggle changed:', e.target.checked);
+                this.autoBreak = e.target.checked;
                 this.saveSettings();
-            });
-        }
+            } else if (e.target.id === 'autoStartWork') {
+                console.log('Auto work toggle changed:', e.target.checked);
+                this.autoWork = e.target.checked;
+                this.saveSettings();
+            } else if (e.target.id === 'autoUpdateCheck') {
+                console.log('Auto update check toggle changed:', e.target.checked);
+                this.autoUpdateCheck = e.target.checked;
+                this.setupAutoUpdateTimer();
+                this.saveSettings();
+            } else if (e.target.id === 'updateCheckInterval') {
+                console.log('Update check interval changed:', e.target.value);
+                this.updateCheckInterval = parseInt(e.target.value);
+                this.setupAutoUpdateTimer();
+                this.saveSettings();
+            }
+        });
+
+        // Also add click listeners directly to the toggle switches as backup
+        const toggleElements = [
+            { element: this.autoBreakToggle, id: 'autoStartBreaks' },
+            { element: this.autoWorkToggle, id: 'autoStartWork' },
+            { element: this.autoUpdateCheckToggle, id: 'autoUpdateCheck' }
+        ];
+
+        toggleElements.forEach(({ element, id }) => {
+            if (element) {
+                console.log(`Adding direct listener to ${id}`);
+                element.addEventListener('change', (e) => {
+                    console.log(`Direct listener: ${id} changed to:`, e.target.checked);
+
+                    switch (id) {
+                        case 'autoStartBreaks':
+                            this.autoBreak = e.target.checked;
+                            break;
+                        case 'autoStartWork':
+                            this.autoWork = e.target.checked;
+                            break;
+                        case 'autoUpdateCheck':
+                            this.autoUpdateCheck = e.target.checked;
+                            this.setupAutoUpdateTimer();
+                            break;
+                    }
+                    this.saveSettings();
+                });
+            } else {
+                console.warn(`Element not found: ${id}`);
+            }
+        });
     }
 
     toggleTimer() {
@@ -612,7 +665,10 @@ class PomodoroTimer {
             breakType: this.breakType,
             autoBreak: this.autoBreak,
             autoWork: this.autoWork,
-            hotkeys: this.hotkeys
+            hotkeys: this.hotkeys,
+            autoUpdateCheck: this.autoUpdateCheck,
+            updateCheckInterval: this.updateCheckInterval,
+            lastUpdateCheck: this.lastUpdateCheck
         };
         localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
@@ -635,7 +691,21 @@ class PomodoroTimer {
                 settings: 'Comma',
                 addGoal: 'G'
             };
+
+            // Load auto-update settings
+            if (settings.autoUpdateCheck !== undefined) {
+                this.autoUpdateCheck = settings.autoUpdateCheck;
+            }
+            if (settings.updateCheckInterval !== undefined) {
+                this.updateCheckInterval = settings.updateCheckInterval;
+            }
+            if (settings.lastUpdateCheck !== undefined) {
+                this.lastUpdateCheck = settings.lastUpdateCheck;
+            }
         }
+
+        // Setup auto-update timer after loading settings
+        this.setupAutoUpdateTimer();
     }
 
     playNotificationSound() {
@@ -691,8 +761,16 @@ class PomodoroTimer {
         this.modalWorkDurationInput.value = this.workDuration;
         this.modalShortBreakDurationInput.value = this.shortBreakDuration;
         this.modalLongBreakDurationInput.value = this.longBreakDuration;
-        this.autoBreakToggle.checked = this.autoBreak;
-        this.autoWorkToggle.checked = this.autoWork;
+
+        // Ensure toggle states are properly synced
+        if (this.autoBreakToggle) {
+            this.autoBreakToggle.checked = this.autoBreak;
+            console.log('Setting autoBreakToggle to:', this.autoBreak);
+        }
+        if (this.autoWorkToggle) {
+            this.autoWorkToggle.checked = this.autoWork;
+            console.log('Setting autoWorkToggle to:', this.autoWork);
+        }
 
         // Set radio button based on break type
         const breakTypeValue = this.breakType === 'normal' ? 'alternate' : this.breakType;
@@ -703,7 +781,23 @@ class PomodoroTimer {
         // Load hotkey values
         this.updateHotkeyInputs();
 
+        // Load auto-update settings
+        if (this.autoUpdateCheckToggle) {
+            this.autoUpdateCheckToggle.checked = this.autoUpdateCheck;
+            console.log('Setting autoUpdateCheckToggle to:', this.autoUpdateCheck);
+        }
+        if (this.updateCheckIntervalSelect) {
+            this.updateCheckIntervalSelect.value = this.updateCheckInterval.toString();
+        }
+
         this.settingsModal.classList.add('show');
+
+        // Force a reflow to ensure all toggle states are visually updated
+        setTimeout(() => {
+            if (this.autoBreakToggle) this.autoBreakToggle.dispatchEvent(new Event('change'));
+            if (this.autoWorkToggle) this.autoWorkToggle.dispatchEvent(new Event('change'));
+            if (this.autoUpdateCheckToggle) this.autoUpdateCheckToggle.dispatchEvent(new Event('change'));
+        }, 10);
     }
 
     closeSettingsModal() {
@@ -770,6 +864,16 @@ class PomodoroTimer {
             this.autoBreak = false;
             this.autoWork = false;
             this.breakType = 'normal';
+            this.autoUpdateCheck = true;
+            this.updateCheckInterval = 24;
+
+            // Reset hotkeys to defaults
+            this.hotkeys = {
+                startPause: 'Space',
+                reset: 'R',
+                settings: 'Comma',
+                addGoal: 'G'
+            };
 
             // Update modal inputs
             this.modalThemeSelector.value = this.currentTheme;
@@ -784,6 +888,17 @@ class PomodoroTimer {
             this.breakTypeRadios.forEach(radio => {
                 radio.checked = radio.value === breakTypeValue;
             });
+
+            // Update auto-update settings
+            if (this.autoUpdateCheckToggle) {
+                this.autoUpdateCheckToggle.checked = this.autoUpdateCheck;
+            }
+            if (this.updateCheckIntervalSelect) {
+                this.updateCheckIntervalSelect.value = this.updateCheckInterval.toString();
+            }
+
+            // Update hotkey inputs
+            this.updateHotkeyInputs();
 
             // Apply theme
             this.changeTheme(this.currentTheme);
@@ -876,6 +991,91 @@ class PomodoroTimer {
         if (this.hotkeyReset) this.hotkeyReset.value = this.hotkeys.reset;
         if (this.hotkeySettings) this.hotkeySettings.value = this.hotkeys.settings;
         if (this.hotkeyAddGoal) this.hotkeyAddGoal.value = this.hotkeys.addGoal;
+    }
+
+    setupAutoUpdateTimer() {
+        // Clear any existing timer
+        if (this.autoUpdateTimer) {
+            clearInterval(this.autoUpdateTimer);
+            this.autoUpdateTimer = null;
+        }
+
+        // Only set up timer if auto-update is enabled
+        if (!this.autoUpdateCheck) {
+            return;
+        }
+
+        // Check if we should run an initial check
+        const now = Date.now();
+        const intervalMs = this.updateCheckInterval * 60 * 60 * 1000; // Convert hours to milliseconds
+
+        if (!this.lastUpdateCheck || (now - this.lastUpdateCheck) >= intervalMs) {
+            // Run initial check after a short delay to avoid blocking startup
+            setTimeout(() => {
+                this.performAutoUpdateCheck();
+            }, 30000); // 30 seconds after startup
+        }
+
+        // Set up recurring timer
+        this.autoUpdateTimer = setInterval(() => {
+            this.performAutoUpdateCheck();
+        }, intervalMs);
+
+        console.log(`Auto-update timer set for every ${this.updateCheckInterval} hours`);
+    }
+
+    async performAutoUpdateCheck() {
+        // Mobile version doesn't support auto-updates, so this is a placeholder
+        console.log('Auto-update check requested, but not supported in mobile version');
+        this.lastUpdateCheck = Date.now();
+        this.saveSettings(); // Save the last check time
+    }
+
+    setupAutoHideScrollbars() {
+        // Auto-hide scrollbars functionality
+        let scrollTimeout;
+        const scrollableElements = document.querySelectorAll('.settings-content, .goals-list, .release-notes');
+
+        scrollableElements.forEach(element => {
+            if (!element) return;
+
+            // Add scrolling class when scrolling starts
+            element.addEventListener('scroll', () => {
+                element.classList.add('scrolling');
+
+                // Clear existing timeout
+                clearTimeout(scrollTimeout);
+
+                // Set timeout to remove scrolling class after user stops scrolling
+                scrollTimeout = setTimeout(() => {
+                    element.classList.remove('scrolling');
+                }, 1500); // Hide scrollbar 1.5 seconds after scrolling stops
+            });
+
+            // Show scrollbar on hover
+            element.addEventListener('mouseenter', () => {
+                element.classList.add('scrolling');
+            });
+
+            // Start fade out timer on mouse leave
+            element.addEventListener('mouseleave', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    element.classList.remove('scrolling');
+                }, 500); // Shorter delay when mouse leaves
+            });
+        });
+
+        // Global scrollbar auto-hide for any new elements
+        document.addEventListener('scroll', (e) => {
+            if (e.target.classList.contains('scrollable')) {
+                e.target.classList.add('scrolling');
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    e.target.classList.remove('scrolling');
+                }, 1500);
+            }
+        }, true);
     }
 }
 

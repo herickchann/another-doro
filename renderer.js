@@ -41,11 +41,17 @@ class PomodoroTimer {
         // Hotkeys
         this.hotkeys = {
             startPause: 'Space',
-            reset: 'KeyR',
+            reset: 'R',
             settings: 'Comma',
-            addGoal: 'KeyG'
+            addGoal: 'G'
         };
         this.isRecordingHotkey = null;
+
+        // Auto-update settings
+        this.autoUpdateCheck = true; // Default: enabled
+        this.updateCheckInterval = 24; // Default: 24 hours (daily)
+        this.autoUpdateTimer = null;
+        this.lastUpdateCheck = null;
 
         this.initializeElements();
         this.setupEventListeners();
@@ -60,6 +66,7 @@ class PomodoroTimer {
         this.setupHotkeyListeners();
         this.setupTabListeners();
         this.setupUpdateListeners();
+        this.setupAutoHideScrollbars();
 
         // Ensure progress ring is properly initialized after everything is loaded
         this.initializeProgressRing();
@@ -119,6 +126,10 @@ class PomodoroTimer {
         this.soundSelector = document.getElementById('soundSelector');
         this.testSoundBtn = document.getElementById('testSoundBtn');
 
+        // Auto-update elements
+        this.autoUpdateCheckToggle = document.getElementById('autoUpdateCheck');
+        this.updateCheckIntervalSelect = document.getElementById('updateCheckInterval');
+
         // Initialize audio
         this.initializeAudio();
 
@@ -172,13 +183,7 @@ class PomodoroTimer {
             }
         });
 
-        // Audio control listeners
-        if (this.soundEnabledToggle) {
-            this.soundEnabledToggle.addEventListener('change', () => {
-                this.soundEnabled = this.soundEnabledToggle.checked;
-                this.saveSettings();
-            });
-        }
+        // Audio control listeners (sound toggle handled in unified change handler above)
 
         if (this.volumeSlider) {
             this.volumeSlider.addEventListener('input', () => {
@@ -206,20 +211,79 @@ class PomodoroTimer {
             });
         }
 
-        // Auto-start toggle listeners
-        if (this.autoBreakToggle) {
-            this.autoBreakToggle.addEventListener('change', () => {
-                this.autoBreak = this.autoBreakToggle.checked;
-                this.saveSettings();
-            });
-        }
+        // Auto-start toggle listeners with debugging
+        console.log('Setting up toggle listeners...');
+        console.log('autoBreakToggle element:', this.autoBreakToggle);
+        console.log('autoWorkToggle element:', this.autoWorkToggle);
+        console.log('soundEnabledToggle element:', this.soundEnabledToggle);
+        console.log('autoUpdateCheckToggle element:', this.autoUpdateCheckToggle);
 
-        if (this.autoWorkToggle) {
-            this.autoWorkToggle.addEventListener('change', () => {
-                this.autoWork = this.autoWorkToggle.checked;
+        // Use document.addEventListener with delegation for more reliable event handling
+        document.addEventListener('change', (e) => {
+            console.log('Change event detected on:', e.target.id, 'checked:', e.target.checked);
+
+            if (e.target.id === 'autoStartBreaks') {
+                console.log('Auto break toggle changed:', e.target.checked);
+                this.autoBreak = e.target.checked;
                 this.saveSettings();
-            });
-        }
+            } else if (e.target.id === 'autoStartWork') {
+                console.log('Auto work toggle changed:', e.target.checked);
+                this.autoWork = e.target.checked;
+                this.saveSettings();
+            } else if (e.target.id === 'autoUpdateCheck') {
+                console.log('Auto update check toggle changed:', e.target.checked);
+                this.autoUpdateCheck = e.target.checked;
+                this.setupAutoUpdateTimer();
+                this.saveSettings();
+            } else if (e.target.id === 'updateCheckInterval') {
+                console.log('Update check interval changed:', e.target.value);
+                this.updateCheckInterval = parseInt(e.target.value);
+                this.setupAutoUpdateTimer();
+                this.saveSettings();
+            } else if (e.target.id === 'soundEnabled') {
+                console.log('Sound enabled toggle changed:', e.target.checked);
+                this.soundEnabled = e.target.checked;
+                this.saveSettings();
+            }
+        });
+
+        // Also add click listeners directly to the toggle switches as backup
+        const toggleElements = [
+            { element: this.autoBreakToggle, id: 'autoStartBreaks' },
+            { element: this.autoWorkToggle, id: 'autoStartWork' },
+            { element: this.soundEnabledToggle, id: 'soundEnabled' },
+            { element: this.autoUpdateCheckToggle, id: 'autoUpdateCheck' }
+        ];
+
+        toggleElements.forEach(({ element, id }) => {
+            if (element) {
+                console.log(`Adding direct listener to ${id}`);
+                element.addEventListener('change', (e) => {
+                    console.log(`Direct listener: ${id} changed to:`, e.target.checked);
+
+                    switch (id) {
+                        case 'autoStartBreaks':
+                            this.autoBreak = e.target.checked;
+                            break;
+                        case 'autoStartWork':
+                            this.autoWork = e.target.checked;
+                            break;
+                        case 'soundEnabled':
+                            this.soundEnabled = e.target.checked;
+                            break;
+                        case 'autoUpdateCheck':
+                            this.autoUpdateCheck = e.target.checked;
+                            this.setupAutoUpdateTimer();
+                            break;
+                    }
+                    this.saveSettings();
+                });
+            } else {
+                console.warn(`Element not found: ${id}`);
+            }
+        });
+
+        // Auto-update listeners are now handled in the unified change handler above
     }
 
     toggleTimer() {
@@ -741,7 +805,10 @@ class PomodoroTimer {
             hotkeys: this.hotkeys,
             soundEnabled: this.soundEnabled,
             volume: this.volume,
-            currentSound: this.currentSound
+            currentSound: this.currentSound,
+            autoUpdateCheck: this.autoUpdateCheck,
+            updateCheckInterval: this.updateCheckInterval,
+            lastUpdateCheck: this.lastUpdateCheck
         };
         localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
@@ -794,6 +861,17 @@ class PomodoroTimer {
                 this.initializeAudio(); // Reload audio with saved sound
             }
 
+            // Load auto-update settings
+            if (settings.autoUpdateCheck !== undefined) {
+                this.autoUpdateCheck = settings.autoUpdateCheck;
+            }
+            if (settings.updateCheckInterval !== undefined) {
+                this.updateCheckInterval = settings.updateCheckInterval;
+            }
+            if (settings.lastUpdateCheck !== undefined) {
+                this.lastUpdateCheck = settings.lastUpdateCheck;
+            }
+
             // Update timer display if not running
             if (!this.isRunning && !this.isPaused) {
                 this.setTimerForCurrentSession();
@@ -801,6 +879,9 @@ class PomodoroTimer {
                 this.updateProgressRing();
             }
         }
+
+        // Setup auto-update timer after loading settings
+        this.setupAutoUpdateTimer();
     }
 
     playNotificationSound() {
@@ -892,8 +973,16 @@ class PomodoroTimer {
         this.modalWorkDurationInput.value = this.workDuration;
         this.modalShortBreakDurationInput.value = this.shortBreakDuration;
         this.modalLongBreakDurationInput.value = this.longBreakDuration;
-        this.autoBreakToggle.checked = this.autoBreak;
-        this.autoWorkToggle.checked = this.autoWork;
+
+        // Ensure toggle states are properly synced
+        if (this.autoBreakToggle) {
+            this.autoBreakToggle.checked = this.autoBreak;
+            console.log('Setting autoBreakToggle to:', this.autoBreak);
+        }
+        if (this.autoWorkToggle) {
+            this.autoWorkToggle.checked = this.autoWork;
+            console.log('Setting autoWorkToggle to:', this.autoWork);
+        }
 
         // Set radio button based on break type
         const breakTypeValue = this.breakType === 'normal' ? 'alternate' : this.breakType;
@@ -907,6 +996,7 @@ class PomodoroTimer {
         // Load audio settings
         if (this.soundEnabledToggle) {
             this.soundEnabledToggle.checked = this.soundEnabled;
+            console.log('Setting soundEnabledToggle to:', this.soundEnabled);
         }
         if (this.volumeSlider) {
             this.volumeSlider.value = Math.round(this.volume * 100);
@@ -917,7 +1007,24 @@ class PomodoroTimer {
             this.soundSelector.value = this.currentSound;
         }
 
+        // Load auto-update settings
+        if (this.autoUpdateCheckToggle) {
+            this.autoUpdateCheckToggle.checked = this.autoUpdateCheck;
+            console.log('Setting autoUpdateCheckToggle to:', this.autoUpdateCheck);
+        }
+        if (this.updateCheckIntervalSelect) {
+            this.updateCheckIntervalSelect.value = this.updateCheckInterval.toString();
+        }
+
         this.settingsModal.classList.add('show');
+
+        // Force a reflow to ensure all toggle states are visually updated
+        setTimeout(() => {
+            if (this.autoBreakToggle) this.autoBreakToggle.dispatchEvent(new Event('change'));
+            if (this.autoWorkToggle) this.autoWorkToggle.dispatchEvent(new Event('change'));
+            if (this.soundEnabledToggle) this.soundEnabledToggle.dispatchEvent(new Event('change'));
+            if (this.autoUpdateCheckToggle) this.autoUpdateCheckToggle.dispatchEvent(new Event('change'));
+        }, 10);
     }
 
     closeSettingsModal() {
@@ -998,6 +1105,16 @@ class PomodoroTimer {
             this.soundEnabled = true;
             this.volume = 0.7;
             this.currentSound = 'timer-finish.wav';
+            this.autoUpdateCheck = true;
+            this.updateCheckInterval = 24;
+
+            // Reset hotkeys to defaults
+            this.hotkeys = {
+                startPause: 'Space',
+                reset: 'R',
+                settings: 'Comma',
+                addGoal: 'G'
+            };
 
             // Update modal inputs
             this.modalThemeSelector.value = this.currentTheme;
@@ -1030,6 +1147,17 @@ class PomodoroTimer {
                 this.initializeAudio(); // Reload audio with default sound
             }
 
+            // Update auto-update settings
+            if (this.autoUpdateCheckToggle) {
+                this.autoUpdateCheckToggle.checked = this.autoUpdateCheck;
+            }
+            if (this.updateCheckIntervalSelect) {
+                this.updateCheckIntervalSelect.value = this.updateCheckInterval.toString();
+            }
+
+            // Update hotkey inputs
+            this.updateHotkeyInputs();
+
             // Apply theme
             this.changeTheme(this.currentTheme);
 
@@ -1046,9 +1174,11 @@ class PomodoroTimer {
     setupHotkeyListeners() {
         // Global hotkey listener
         document.addEventListener('keydown', (e) => {
-            // Don't trigger hotkeys when typing in inputs or if modal is open
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
-                this.settingsModal.classList.contains('show')) {
+            // Don't trigger hotkeys when typing in inputs or if modal is open (unless recording hotkeys)
+            if ((e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && !this.isRecordingHotkey) {
+                return;
+            }
+            if (this.settingsModal.classList.contains('show') && !this.isRecordingHotkey) {
                 return;
             }
 
@@ -1139,29 +1269,82 @@ class PomodoroTimer {
     }
 
     recordHotkey(action) {
+        // Prevent multiple hotkey recordings at once
+        if (this.isRecordingHotkey) {
+            console.log('Already recording a hotkey, ignoring new request');
+            return;
+        }
+
         const input = this[`hotkey${action.charAt(0).toUpperCase() + action.slice(1)}`];
+
+        // Store original input state
+        const originalValue = input.value;
+        const originalReadOnly = input.readOnly;
 
         this.isRecordingHotkey = action;
         input.classList.add('recording');
-        input.value = 'Press any key combination...';
+        input.value = 'Press key combination...';
+        input.readOnly = true; // Prevent typing
         input.focus();
+        input.select();
+
+        const cancelRecording = () => {
+            input.value = originalValue;
+            input.classList.remove('recording');
+            input.readOnly = originalReadOnly;
+            this.isRecordingHotkey = null;
+            document.removeEventListener('keydown', recordKeydown, true);
+            input.removeEventListener('blur', handleBlur);
+        };
 
         const recordKeydown = (e) => {
+            // Prevent default browser behavior for common shortcuts
             e.preventDefault();
-            e.stopPropagation();
+
+            // Skip if it's just a modifier key by itself
+            if (e.key === 'Control' || e.key === 'Alt' || e.key === 'Shift' || e.key === 'Meta') {
+                return;
+            }
+
+            // Handle escape key to cancel recording
+            if (e.key === 'Escape') {
+                cancelRecording();
+                return;
+            }
 
             const keyString = this.getKeyString(e);
             this.hotkeys[action] = keyString;
             input.value = keyString;
             input.classList.remove('recording');
+            input.readOnly = originalReadOnly;
 
             this.isRecordingHotkey = null;
             this.saveSettings();
 
+            // Clean up event listeners
             document.removeEventListener('keydown', recordKeydown, true);
+            input.removeEventListener('blur', handleBlur);
         };
 
+        const handleBlur = () => {
+            // When input loses focus, cancel recording and revert value
+            if (this.isRecordingHotkey === action) {
+                console.log('Input lost focus, canceling hotkey recording');
+                cancelRecording();
+            }
+        };
+
+        // Add event listeners
         document.addEventListener('keydown', recordKeydown, true);
+        input.addEventListener('blur', handleBlur);
+
+        // Auto-cancel after 10 seconds to prevent getting stuck
+        setTimeout(() => {
+            if (this.isRecordingHotkey === action) {
+                console.log('Auto-canceling hotkey recording after timeout');
+                cancelRecording();
+            }
+        }, 10000);
     }
 
     clearHotkey(action) {
@@ -1260,6 +1443,69 @@ class PomodoroTimer {
 
         // Load current version
         this.loadCurrentVersion();
+    }
+
+    setupAutoUpdateTimer() {
+        // Clear any existing timer
+        if (this.autoUpdateTimer) {
+            clearInterval(this.autoUpdateTimer);
+            this.autoUpdateTimer = null;
+        }
+
+        // Only set up timer if auto-update is enabled
+        if (!this.autoUpdateCheck) {
+            return;
+        }
+
+        // Check if we should run an initial check
+        const now = Date.now();
+        const intervalMs = this.updateCheckInterval * 60 * 60 * 1000; // Convert hours to milliseconds
+
+        if (!this.lastUpdateCheck || (now - this.lastUpdateCheck) >= intervalMs) {
+            // Run initial check after a short delay to avoid blocking startup
+            setTimeout(() => {
+                this.performAutoUpdateCheck();
+            }, 30000); // 30 seconds after startup
+        }
+
+        // Set up recurring timer
+        this.autoUpdateTimer = setInterval(() => {
+            this.performAutoUpdateCheck();
+        }, intervalMs);
+
+        console.log(`Auto-update timer set for every ${this.updateCheckInterval} hours`);
+    }
+
+    async performAutoUpdateCheck() {
+        if (!ipcRenderer || !this.autoUpdateCheck) {
+            return;
+        }
+
+        console.log('Performing automatic update check...');
+        this.lastUpdateCheck = Date.now();
+        this.saveSettings(); // Save the last check time
+
+        try {
+            const result = await ipcRenderer.invoke('check-for-updates');
+
+            if (result.available && result.version) {
+                console.log(`Auto-update found: v${result.version}`);
+
+                // Show update popup for auto-discovered updates
+                this.showUpdatePopup({
+                    version: result.version,
+                    releaseNotes: result.releaseNotes || 'Bug fixes and improvements'
+                });
+            } else if (result.error) {
+                console.log('Auto-update check failed:', result.error);
+                // Don't show error notifications for automatic checks to avoid spam
+            } else {
+                console.log('Auto-update check: No updates available');
+            }
+        } catch (error) {
+            console.error('Auto-update check failed:', error);
+            // Silent failure for automatic checks
+        }
     }
 
     async loadCurrentVersion() {
@@ -1492,9 +1738,14 @@ class PomodoroTimer {
             this.newVersionPopup.textContent = updateInfo.version;
         }
 
-        // Set description
-        if (this.updateDescription) {
-            this.updateDescription.textContent = 'A new version of AnotherDoro is available with improvements and bug fixes.';
+        // Set release notes
+        const releaseNotesElement = document.getElementById('releaseNotes');
+        if (releaseNotesElement) {
+            if (updateInfo.releaseNotes) {
+                releaseNotesElement.textContent = updateInfo.releaseNotes;
+            } else {
+                releaseNotesElement.textContent = 'Bug fixes and improvements';
+            }
         }
 
         // Reset popup state
@@ -1540,7 +1791,11 @@ class PomodoroTimer {
             this.updatePopupProgressFill.style.width = `${percent}%`;
         }
         if (this.updatePopupProgressText) {
-            this.updatePopupProgressText.textContent = `Downloading update... ${Math.round(percent)}%`;
+            this.updatePopupProgressText.textContent = `Downloading update...`;
+        }
+        const progressPercentElement = document.getElementById('updatePopupProgressPercent');
+        if (progressPercentElement) {
+            progressPercentElement.textContent = `${Math.round(percent)}%`;
         }
     }
 
@@ -1550,9 +1805,10 @@ class PomodoroTimer {
             this.updatePopupProgress.style.display = 'none';
         }
 
-        // Update description
-        if (this.updateDescription) {
-            this.updateDescription.textContent = 'The update has been downloaded and is ready to install. The app will restart to complete the installation.';
+        // Update release notes to show download completion
+        const releaseNotesElement = document.getElementById('releaseNotes');
+        if (releaseNotesElement) {
+            releaseNotesElement.textContent = 'The update has been downloaded and is ready to install. The app will restart to complete the installation.';
         }
 
         // Show install button, hide download button
@@ -1573,7 +1829,7 @@ class PomodoroTimer {
         // Reset buttons
         if (this.downloadUpdatePopupBtn) {
             this.downloadUpdatePopupBtn.disabled = false;
-            this.downloadUpdatePopupBtn.textContent = 'Download & Install';
+            this.downloadUpdatePopupBtn.textContent = 'Download Update';
             this.downloadUpdatePopupBtn.style.display = 'inline-block';
         }
         if (this.installUpdatePopupBtn) {
@@ -1585,8 +1841,59 @@ class PomodoroTimer {
             this.updatePopupProgressFill.style.width = '0%';
         }
         if (this.updatePopupProgressText) {
-            this.updatePopupProgressText.textContent = 'Downloading update...';
+            this.updatePopupProgressText.textContent = 'Preparing download...';
         }
+        const progressPercentElement = document.getElementById('updatePopupProgressPercent');
+        if (progressPercentElement) {
+            progressPercentElement.textContent = '0%';
+        }
+    }
+
+    setupAutoHideScrollbars() {
+        // Auto-hide scrollbars functionality
+        let scrollTimeout;
+        const scrollableElements = document.querySelectorAll('.settings-content, .goals-list, .release-notes');
+
+        scrollableElements.forEach(element => {
+            if (!element) return;
+
+            // Add scrolling class when scrolling starts
+            element.addEventListener('scroll', () => {
+                element.classList.add('scrolling');
+
+                // Clear existing timeout
+                clearTimeout(scrollTimeout);
+
+                // Set timeout to remove scrolling class after user stops scrolling
+                scrollTimeout = setTimeout(() => {
+                    element.classList.remove('scrolling');
+                }, 1500); // Hide scrollbar 1.5 seconds after scrolling stops
+            });
+
+            // Show scrollbar on hover
+            element.addEventListener('mouseenter', () => {
+                element.classList.add('scrolling');
+            });
+
+            // Start fade out timer on mouse leave
+            element.addEventListener('mouseleave', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    element.classList.remove('scrolling');
+                }, 500); // Shorter delay when mouse leaves
+            });
+        });
+
+        // Global scrollbar auto-hide for any new elements
+        document.addEventListener('scroll', (e) => {
+            if (e.target.classList.contains('scrollable')) {
+                e.target.classList.add('scrolling');
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    e.target.classList.remove('scrolling');
+                }, 1500);
+            }
+        }, true);
     }
 }
 

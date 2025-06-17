@@ -132,32 +132,41 @@
                 </div>
                 <div class="modal-body">
                     <div class="update-popup-content">
-                        <div class="update-popup-info">
-                            <div class="current-version-info">
-                                <span class="version-label">Current Version:</span>
-                                <span class="version-number" id="currentVersionPopup">1.0.4</span>
-                            </div>
-                            <div class="new-version-info">
-                                <span class="version-label">New Version:</span>
-                                <span class="version-number new-version" id="newVersionPopup">1.0.5</span>
+                        <div class="update-version-info">
+                            <div class="version-comparison">
+                                <div class="current-version-info">
+                                    <span class="version-label">Current Version</span>
+                                    <span class="version-number" id="currentVersionPopup">1.0.4</span>
+                                </div>
+                                <div class="version-arrow">→</div>
+                                <div class="new-version-info">
+                                    <span class="version-label">New Version</span>
+                                    <span class="version-number new-version" id="newVersionPopup">1.0.5</span>
+                                </div>
                             </div>
                         </div>
+
                         <div class="update-description" id="updateDescription">
-                            A new version of AnotherDoro is available with improvements and bug fixes.
+                            <h4>What's New:</h4>
+                            <div class="release-notes" id="releaseNotes">
+                                A new version of AnotherDoro is available with improvements and bug fixes.
+                            </div>
                         </div>
+
                         <div class="update-popup-progress" id="updatePopupProgress" style="display: none;">
                             <div class="progress-bar">
                                 <div class="progress-fill" id="updatePopupProgressFill"></div>
                             </div>
-                            <div class="progress-text" id="updatePopupProgressText">Downloading update...</div>
+                            <div class="progress-text" id="updatePopupProgressText">Preparing download...</div>
+                            <div class="progress-percentage" id="updatePopupProgressPercent">0%</div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelUpdateBtn">Not Now</button>
-                    <button class="btn btn-primary" id="downloadUpdatePopupBtn">Download & Install</button>
-                    <button class="btn btn-primary" id="installUpdatePopupBtn" style="display: none;">Install
-                        Now</button>
+                    <button class="btn btn-secondary" id="downloadUpdatePopupBtn">Download Update</button>
+                    <button class="btn btn-primary" id="installUpdatePopupBtn" style="display: none;">Install &
+                        Restart</button>
                 </div>
             </div>
         </div>
@@ -262,6 +271,23 @@
                                     </div>
                                 </div>
                                 <div class="setting-group">
+                                    <label for="autoUpdateCheck">Auto-check for updates</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="autoUpdateCheck" checked>
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="updateCheckInterval">Check interval</label>
+                                    <select id="updateCheckInterval">
+                                        <option value="1">Every hour</option>
+                                        <option value="6">Every 6 hours</option>
+                                        <option value="12">Every 12 hours</option>
+                                        <option value="24" selected>Daily</option>
+                                        <option value="168">Weekly</option>
+                                    </select>
+                                </div>
+                                <div class="setting-group">
                                     <button class="btn btn-primary" id="checkUpdatesBtn">Check for Updates</button>
                                     <div class="update-status" id="updateStatus"></div>
 
@@ -333,7 +359,8 @@
                                     <div class="hotkey-input">
                                         <input type="text" id="hotkeyStartPause" readonly
                                             placeholder="Click to set hotkey">
-                                        <button class="btn btn-secondary btn-small" id="clearStartPause">Clear</button>
+                                        <button class="btn-clear-hotkey" id="clearStartPause"
+                                            title="Clear hotkey">&times;</button>
                                     </div>
                                 </div>
 
@@ -341,7 +368,8 @@
                                     <label for="hotkeyReset">Reset Timer</label>
                                     <div class="hotkey-input">
                                         <input type="text" id="hotkeyReset" readonly placeholder="Click to set hotkey">
-                                        <button class="btn btn-secondary btn-small" id="clearReset">Clear</button>
+                                        <button class="btn-clear-hotkey" id="clearReset"
+                                            title="Clear hotkey">&times;</button>
                                     </div>
                                 </div>
                             </div>
@@ -353,7 +381,8 @@
                                     <div class="hotkey-input">
                                         <input type="text" id="hotkeySettings" readonly
                                             placeholder="Click to set hotkey">
-                                        <button class="btn btn-secondary btn-small" id="clearSettings">Clear</button>
+                                        <button class="btn-clear-hotkey" id="clearSettings"
+                                            title="Clear hotkey">&times;</button>
                                     </div>
                                 </div>
 
@@ -362,7 +391,8 @@
                                     <div class="hotkey-input">
                                         <input type="text" id="hotkeyAddGoal" readonly
                                             placeholder="Click to set hotkey">
-                                        <button class="btn btn-secondary btn-small" id="clearAddGoal">Clear</button>
+                                        <button class="btn-clear-hotkey" id="clearAddGoal"
+                                            title="Clear hotkey">&times;</button>
                                     </div>
                                 </div>
                             </div>

@@ -64,6 +64,7 @@ class PomodoroTimer {
         this.sessionNumber = document.getElementById('sessionNumber');
         this.startPauseBtn = document.getElementById('startPauseBtn');
         this.resetBtn = document.getElementById('resetBtn');
+        this.skipBtn = document.getElementById('skipBtn');
         this.progressCircle = document.getElementById('progressCircle');
         this.timerCircle = document.querySelector('.timer-circle');
 
@@ -120,7 +121,8 @@ class PomodoroTimer {
 
     setupEventListeners() {
         this.startPauseBtn.addEventListener('click', () => this.toggleTimer());
-        this.resetBtn.addEventListener('click', () => this.resetTimer());
+        this.resetBtn.addEventListener('click', () => this.resetPomodoroSession());
+        this.skipBtn.addEventListener('click', () => this.skipToNext());
 
         // Settings modal listeners
         this.settingsBtn.addEventListener('click', () => this.openSettingsModal());
@@ -142,6 +144,21 @@ class PomodoroTimer {
                 this.closeSettingsModal();
             }
         });
+
+        // Auto-start toggle listeners
+        if (this.autoBreakToggle) {
+            this.autoBreakToggle.addEventListener('change', () => {
+                this.autoBreak = this.autoBreakToggle.checked;
+                this.saveSettings();
+            });
+        }
+
+        if (this.autoWorkToggle) {
+            this.autoWorkToggle.addEventListener('change', () => {
+                this.autoWork = this.autoWorkToggle.checked;
+                this.saveSettings();
+            });
+        }
     }
 
     toggleTimer() {
@@ -192,6 +209,80 @@ class PomodoroTimer {
         this.setTimerForCurrentSession();
         this.updateDisplay();
         this.updateProgressRing();
+    }
+
+    resetPomodoroSession() {
+        // Reset the entire pomodoro session
+        this.isRunning = false;
+        this.isPaused = false;
+        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
+        this.timerCircle.classList.remove('active');
+        clearInterval(this.timerInterval);
+
+        // Reset session data
+        this.sessionCount = 0;
+        this.currentSessionType = 'work';
+
+        this.setTimerForCurrentSession();
+        this.updateDisplay();
+        this.updateProgressRing();
+        this.updateSessionDisplay();
+
+        this.showNotification('Session Reset', 'Pomodoro session has been reset to the beginning! 🔄');
+    }
+
+    skipToNext() {
+        // Stop current timer
+        this.isRunning = false;
+        this.isPaused = false;
+        clearInterval(this.timerInterval);
+        this.timerCircle.classList.remove('active');
+        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
+
+        // Determine next session type
+        let nextSessionType = '';
+        let notificationTitle = '';
+        let notificationMessage = '';
+
+        if (this.currentSessionType === 'work') {
+            // Skip work session - go to break
+            this.completedSessions++;
+            this.sessionCount++;
+
+            // Determine break type based on break type preference
+            if (this.breakType === 'short') {
+                nextSessionType = 'shortBreak';
+            } else if (this.breakType === 'long') {
+                nextSessionType = 'longBreak';
+            } else {
+                // Normal cycle
+                if (this.sessionCount % 4 === 0) {
+                    nextSessionType = 'longBreak';
+                } else {
+                    nextSessionType = 'shortBreak';
+                }
+            }
+
+            const breakType = nextSessionType === 'longBreak' ? 'long break' : 'short break';
+            notificationTitle = 'Work Session Skipped';
+            notificationMessage = `Moving to ${breakType}! ${nextSessionType === 'longBreak' ? '🌟' : '☕'}`;
+        } else {
+            // Skip break session - go to work
+            nextSessionType = 'work';
+            notificationTitle = 'Break Skipped';
+            notificationMessage = 'Back to work! Time to focus! 🎯';
+        }
+
+        // Update session type and timer
+        this.currentSessionType = nextSessionType;
+        this.setTimerForCurrentSession();
+        this.updateDisplay();
+        this.updateProgressRing();
+        this.updateSessionDisplay();
+
+        this.showNotification(notificationTitle, notificationMessage);
+        this.saveStats();
+        this.saveSettings();
     }
 
     setTimerForCurrentSession() {

@@ -388,6 +388,11 @@ textarea,
     gap: 16px;
 }
 
+/* Reduce gap for hotkey inputs specifically */
+.setting-group:has(.hotkey-input) {
+    gap: 12px;
+}
+
 .setting-full-width {
     margin-bottom: var(--setting-group-margin);
 }
@@ -489,8 +494,12 @@ input[type="number"] {
 
 .toggle-switch input {
     opacity: 0;
-    width: 0;
-    height: 0;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    z-index: 2;
+    cursor: pointer;
+    margin: 0;
 }
 
 .slider {
@@ -577,6 +586,9 @@ input:checked+.slider:before {
     min-height: 60px;
     max-height: 200px;
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
 .no-goals-message {
@@ -852,22 +864,61 @@ input:checked+.slider:before {
     }
 }
 
-/* Custom scrollbar */
+/* Global scrollbar styles - overlay scrollbars */
+/* Global scrollbar styles with auto-hide */
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background 0.3s ease, opacity 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.5);
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Auto-hide scrollbars - fade out when not scrolling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    transition: scrollbar-color 0.3s ease;
+}
+
+/* Show scrollbars when scrolling or hovering */
+*.scrolling,
+*:hover,
+*:focus,
+*:active {
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* WebKit scrollbar auto-hide */
+*:not(.scrolling):not(:hover):not(:focus):not(:active)::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    background-clip: content-box;
+}
+
+*.scrolling::-webkit-scrollbar-thumb,
+*:hover::-webkit-scrollbar-thumb,
+*:focus::-webkit-scrollbar-thumb,
+*:active::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    background-clip: content-box;
 }
 
 /* Settings Modal */
@@ -897,7 +948,8 @@ input:checked+.slider:before {
     border-radius: 16px;
     width: 90%;
     max-width: 500px;
-    max-height: 80vh;
+    height: 700px;
+    max-height: 85vh;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
@@ -955,44 +1007,33 @@ input:checked+.slider:before {
 .settings-content {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0 var(--modal-padding);
     margin-top: 0;
-}
-
-.settings-content {
-    scrollbar-width: none;
-    /* Firefox */
-    -ms-overflow-style: none;
-    /* IE and Edge */
-}
-
-.settings-content::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-}
-
-.settings-content:hover {
     scrollbar-width: thin;
-    /* Firefox */
-    -ms-overflow-style: auto;
-    /* IE and Edge */
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
 
-.settings-content:hover::-webkit-scrollbar {
-    width: 6px;
-}
-
-.settings-content:hover::-webkit-scrollbar-track {
+/* Overlay scrollbars for settings content */
+.settings-content::-webkit-scrollbar {
+    width: 8px;
     background: transparent;
 }
 
-.settings-content:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+.settings-content::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.settings-content:hover::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+.settings-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+    background-clip: content-box;
 }
 
 .modal-footer {
@@ -1275,13 +1316,13 @@ input:checked+.slider:before {
 /* Hotkey Input Styling */
 .hotkey-input {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
 }
 
 .hotkey-input input {
     flex: 1;
-    max-width: 200px;
+    max-width: 160px;
     padding: 8px 12px;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1301,13 +1342,58 @@ input:checked+.slider:before {
 .hotkey-input input.recording {
     border-color: var(--primary-color);
     background: rgba(var(--primary-color-rgb), 0.1);
-    animation: pulse 1s infinite;
+    color: var(--primary-color);
+    font-size: 13px !important;
+    font-weight: 500;
+    transform: none !important;
+    animation: pulse-recording 2s ease-in-out infinite;
+    pointer-events: none;
+    user-select: none;
+    text-align: center;
 }
 
-.hotkey-input .btn-small {
-    padding: 6px 12px;
-    font-size: 12px;
-    min-width: 50px;
+@keyframes pulse-recording {
+
+    0%,
+    100% {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.3);
+    }
+
+    50% {
+        border-color: rgba(var(--primary-color-rgb), 0.8);
+        box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+    }
+}
+
+/* Clear hotkey button styling */
+.btn-clear-hotkey {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-clear-hotkey:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-1px);
+}
+
+.btn-clear-hotkey:active {
+    transform: translateY(0);
 }
 
 /* Update UI Styles */
@@ -1518,15 +1604,25 @@ body.update-banner-visible {
     padding: 8px 0;
 }
 
-.update-popup-info {
+.update-version-info {
+    margin-bottom: 20px;
+}
+
+.version-comparison {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
     padding: 16px;
     background: var(--surface-color);
     border: 1px solid var(--surface-border);
     border-radius: 8px;
+}
+
+.version-arrow {
+    font-size: 18px;
+    color: var(--primary-color);
+    font-weight: bold;
+    margin: 0 10px;
 }
 
 .current-version-info,
@@ -1555,11 +1651,24 @@ body.update-banner-visible {
 }
 
 .update-description {
+    margin-bottom: 20px;
+}
+
+.update-description h4 {
     font-size: 14px;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+    font-weight: 600;
+}
+
+.release-notes {
+    font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
-    margin-bottom: 20px;
-    text-align: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .update-popup-progress {
@@ -1588,6 +1697,14 @@ body.update-banner-visible {
     font-size: 13px;
     text-align: center;
     color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.progress-percentage {
+    font-size: 12px;
+    text-align: center;
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
 .volume-slider {
