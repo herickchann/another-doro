@@ -1,1007 +1,503 @@
-const { ipcRenderer } = require('electron');
+// Unified renderer for both desktop and mobile environments
+import { Environment } from './src/utils/environment.js';
+import { Storage } from './src/utils/storage.js';
+import { UI_TIMING } from './src/utils/constants.js';
+import { NotificationService } from './src/services/NotificationService.js';
+import { AudioService } from './src/services/AudioService.js';
+import { TimerCore } from './src/components/Timer/TimerCore.js';
+import { TimerDisplay } from './src/components/Timer/TimerDisplay.js';
+import { SettingsModal } from './src/components/UI/SettingsModal.js';
+import { GoalsManager } from './src/components/UI/GoalsManager.js';
+import { StatsDisplay } from './src/components/UI/StatsDisplay.js';
+import { ThemeManager } from './src/components/UI/ThemeManager.js';
+import { HotkeyManager } from './src/components/UI/HotkeyManager.js';
+import { LoadingScreen } from './src/components/UI/LoadingScreen.js';
+import { TrayManager } from './src/components/Electron/TrayManager.js';
 
-class PomodoroTimer {
+class PomodoroApp {
     constructor() {
-        this.isRunning = false;
-        this.isPaused = false;
-        this.currentTime = 0;
-        this.totalTime = 0;
-        this.sessionCount = 0;
-        this.completedSessions = 0;
-        this.totalTimeSpent = 0;
-        this.currentSessionType = 'work'; // 'work', 'shortBreak', 'longBreak'
-        this.timerInterval = null;
-        this.goals = [];
-        this.currentTheme = 'neon';
+        // Core components
+        this.timer = null;
+        this.display = null;
 
-        // Settings
-        this.workDuration = 25;
-        this.shortBreakDuration = 5;
-        this.longBreakDuration = 15;
-        this.autoBreak = false;
-        this.autoWork = false;
-        this.breakType = 'normal'; // 'normal', 'short', 'long'
+        // UI components
+        this.settingsModal = null;
+        this.goalsManager = null;
+        this.statsDisplay = null;
+        this.themeManager = null;
+        this.hotkeyManager = null;
+        this.loadingScreen = null;
 
-        // Hotkeys
-        this.hotkeys = {
-            startPause: 'Space',
-            reset: 'KeyR',
-            settings: 'Comma',
-            addGoal: 'KeyG'
-        };
-        this.isRecordingHotkey = null;
+        // Platform-specific components
+        this.trayManager = null;
 
-        this.initializeElements();
-        this.setupEventListeners();
-        this.updateDisplay();
-        this.updateProgressRing();
-        this.loadStats();
-        this.loadGoals();
-        this.loadTheme();
-        this.loadSettings();
-        this.setupGoalEventListeners();
-        this.setupThemeEventListener();
-        this.setupHotkeyListeners();
-        this.setupTabListeners();
+        // State
+        this.isInitialized = false;
+        this.currentSettings = {};
+        this.currentStats = {};
+        this.currentGoals = [];
+        this.currentTheme = '';
 
-        // Ensure progress ring is properly initialized after everything is loaded
-        this.initializeProgressRing();
-
-        // Hide loading screen after initialization
-        this.hideLoadingScreen();
+        this.initializeApp();
     }
 
-    initializeElements() {
-        this.timeDisplay = document.getElementById('timeDisplay');
-        this.sessionType = document.getElementById('sessionType');
-        this.sessionNumber = document.getElementById('sessionNumber');
-        this.startPauseBtn = document.getElementById('startPauseBtn');
-        this.resetBtn = document.getElementById('resetBtn');
-        this.skipBtn = document.getElementById('skipBtn');
-        this.progressCircle = document.getElementById('progressCircle');
-        this.timerCircle = document.querySelector('.timer-circle');
+    async initializeApp() {
+        try {
+            console.log(`Initializing AnotherDoro in ${Environment.environment} mode...`);
 
-        // Settings modal elements
-        this.settingsBtn = document.getElementById('settingsBtn');
-        this.settingsModal = document.getElementById('settingsModal');
-        this.closeSettingsBtn = document.getElementById('closeSettings');
-        this.saveSettingsBtn = document.getElementById('saveSettings');
-        this.resetSettingsBtn = document.getElementById('restoreDefaults');
-        this.clearSessionsBtn = document.getElementById('clearAllSessions');
+            // Initialize services
+            console.log('Initializing services...');
+            await this.initializeServices();
 
-        // Settings inputs (modal)
-        this.modalThemeSelector = document.getElementById('themeSelector');
-        this.modalWorkDurationInput = document.getElementById('workDurationInput');
-        this.modalShortBreakDurationInput = document.getElementById('shortBreakDurationInput');
-        this.modalLongBreakDurationInput = document.getElementById('longBreakDurationInput');
-        this.autoBreakToggle = document.getElementById('autoStartBreaks');
-        this.autoWorkToggle = document.getElementById('autoStartWork');
-        this.breakTypeRadios = document.querySelectorAll('input[name="breakType"]');
+            // Load data
+            console.log('Loading data...');
+            await this.loadData();
 
-        // Hotkey elements
-        this.hotkeyStartPause = document.getElementById('hotkeyStartPause');
-        this.hotkeyReset = document.getElementById('hotkeyReset');
-        this.hotkeySettings = document.getElementById('hotkeySettings');
-        this.hotkeyAddGoal = document.getElementById('hotkeyAddGoal');
+            // Initialize components
+            console.log('Initializing components...');
+            this.initializeComponents();
 
-        // Tab elements
-        this.tabButtons = document.querySelectorAll('.tab-button');
-        this.tabContents = document.querySelectorAll('.tab-content');
+            // Setup event listeners
+            console.log('Setting up event listeners...');
+            this.setupEventListeners();
 
-        // Stats
-        this.completedSessionsDisplay = document.getElementById('completedSessions');
-        this.totalTimeDisplay = document.getElementById('totalTime');
+            // Apply theme
+            console.log('Applying theme...');
+            this.applyTheme(this.currentTheme);
 
-        // Goals
-        this.addGoalBtn = document.getElementById('addGoalBtn');
-        this.goalsList = document.getElementById('goalsList');
-        this.noGoalsMessage = document.getElementById('noGoalsMessage');
-        this.addGoalForm = document.getElementById('addGoalForm');
-        this.goalInput = document.getElementById('goalInput');
-        this.saveGoalBtn = document.getElementById('saveGoalBtn');
-        this.cancelGoalBtn = document.getElementById('cancelGoalBtn');
+            // Hide loading screen
+            console.log('Hiding loading screen...');
+            setTimeout(() => {
+                this.hideLoadingScreen();
+            }, UI_TIMING.LOADING_SCREEN_DURATION);
 
-        // Set up progress ring (initial setup)
-        if (this.progressCircle && this.progressCircle.r && this.progressCircle.r.baseVal) {
-            const radius = this.progressCircle.r.baseVal.value;
-            this.circumference = 2 * Math.PI * radius;
-            this.progressCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
-            this.progressCircle.style.strokeDashoffset = this.circumference;
-        } else {
-            console.warn('Progress circle not ready during initial setup');
+            this.isInitialized = true;
+            console.log('AnotherDoro initialized successfully');
+
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            console.error('Error stack:', error.stack);
+            this.showFallbackMessage();
+        }
+    }
+
+    async initializeServices() {
+        // Initialize notification service
+        await NotificationService.initialize();
+
+        // Initialize audio service
+        await AudioService.initialize(this.currentSettings);
+
+        console.log('Services initialized:', {
+            notifications: NotificationService.getStatus(),
+            audio: AudioService.getStatus()
+        });
+    }
+
+    async loadData() {
+        // Load settings
+        this.currentSettings = Storage.loadSettings();
+
+        // Load stats
+        this.currentStats = Storage.loadStats();
+
+        // Load goals
+        this.currentGoals = Storage.loadGoals();
+
+        // Load theme
+        this.currentTheme = Storage.loadTheme();
+
+        console.log('Data loaded:', {
+            settings: Object.keys(this.currentSettings),
+            stats: this.currentStats,
+            goalsCount: this.currentGoals.length,
+            theme: this.currentTheme
+        });
+    }
+
+    initializeComponents() {
+        try {
+            // Initialize loading screen first
+            console.log('Creating LoadingScreen...');
+            this.loadingScreen = new LoadingScreen();
+
+            // Initialize core timer components
+            console.log('Creating TimerCore with settings:', this.currentSettings);
+            this.timer = new TimerCore(this.currentSettings);
+            console.log('TimerCore created, updating stats...');
+            this.timer.updateStats(this.currentStats);
+            console.log('Timer state:', this.timer.state);
+
+            // Initialize timer display
+            console.log('Finding app container...');
+            const appContainer = document.querySelector('.app-container') || document.body;
+            console.log('App container found:', !!appContainer);
+
+            console.log('Creating TimerDisplay...');
+            this.display = new TimerDisplay(appContainer);
+            console.log('TimerDisplay created, initializing with state...');
+            this.display.initialize(this.timer.state);
+            console.log('TimerDisplay initialized');
+
+            // Initialize UI components
+            console.log('Creating UI components...');
+            this.settingsModal = new SettingsModal(this);
+            this.goalsManager = new GoalsManager();
+            this.goalsManager.initialize(this.currentGoals);
+            this.statsDisplay = new StatsDisplay();
+            this.statsDisplay.initialize(this.currentStats);
+            this.themeManager = new ThemeManager();
+            this.themeManager.initialize(this.currentTheme);
+
+            // Initialize hotkey manager if supported
+            if (Environment.capabilities.hasKeyboardShortcuts) {
+                console.log('Creating HotkeyManager...');
+                this.hotkeyManager = new HotkeyManager();
+                this.hotkeyManager.initialize(this.currentSettings.hotkeys);
+                this.setupHotkeyActions();
+            }
+
+            // Initialize platform-specific components
+            if (Environment.isElectron()) {
+                console.log('Creating TrayManager...');
+                this.trayManager = new TrayManager();
+                this.trayManager.initialize();
+                this.trayManager.bindToTimer(this.timer);
+            }
+
+            // Set up global references for HTML onclick handlers
+            window.goalsManager = this.goalsManager;
+            window.statsDisplay = this.statsDisplay;
+            window.themeManager = this.themeManager;
+
+            console.log('Components initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize components:', error);
+            throw error;
         }
     }
 
     setupEventListeners() {
-        this.startPauseBtn.addEventListener('click', () => this.toggleTimer());
-        this.resetBtn.addEventListener('click', () => this.resetPomodoroSession());
-        this.skipBtn.addEventListener('click', () => this.skipBreak());
-
-        // Settings modal listeners
-        this.settingsBtn.addEventListener('click', () => this.openSettingsModal());
-        this.closeSettingsBtn.addEventListener('click', () => this.closeSettingsModal());
-        this.saveSettingsBtn.addEventListener('click', () => this.saveSettingsFromModal());
-        this.resetSettingsBtn.addEventListener('click', () => this.resetSettingsToDefaults());
-        this.clearSessionsBtn.addEventListener('click', () => this.showClearSessionsConfirmation());
-
-        // Close modal when clicking outside
-        this.settingsModal.addEventListener('click', (e) => {
-            if (e.target === this.settingsModal) {
-                this.closeSettingsModal();
-            }
-        });
-
-        // Close modal when pressing Escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.settingsModal.classList.contains('show')) {
-                this.closeSettingsModal();
-            }
-        });
-    }
-
-    toggleTimer() {
-        if (this.isRunning && !this.isPaused) {
-            this.pauseTimer();
-        } else {
-            this.startTimer();
-        }
-    }
-
-    startTimer() {
-        if (!this.isRunning && !this.isPaused) {
-            // Starting fresh
-            this.setTimerForCurrentSession();
-        }
-
-        this.isRunning = true;
-        this.isPaused = false;
-        this.startPauseBtn.innerHTML = '<span class="btn-text">Pause</span>';
-        this.timerCircle.classList.add('active');
-
-        this.timerInterval = setInterval(() => {
-            this.currentTime--;
-            this.updateDisplay();
-            this.updateProgressRing();
+        // Timer core events
+        this.timer.on('timer:tick', (data) => {
+            this.display.updateTime(data.currentTime);
+            this.display.updateProgress(data.progress, this.timer.state.sessionType);
             this.updateTrayTitle();
-
-            if (this.currentTime <= 0) {
-                this.completeSession();
-            }
-        }, 1000);
-    }
-
-    pauseTimer() {
-        this.isRunning = false;
-        this.isPaused = true;
-        this.startPauseBtn.innerHTML = '<span class="btn-text">Resume</span>';
-        this.timerCircle.classList.remove('active');
-        clearInterval(this.timerInterval);
-        this.updateTrayTitle();
-    }
-
-    resetTimer() {
-        this.isRunning = false;
-        this.isPaused = false;
-        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
-        this.timerCircle.classList.remove('active');
-        clearInterval(this.timerInterval);
-
-        this.setTimerForCurrentSession();
-        this.updateDisplay();
-        this.updateProgressRing();
-        this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
-    }
-
-    resetPomodoroSession() {
-        // Reset the entire pomodoro session
-        this.isRunning = false;
-        this.isPaused = false;
-        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
-        this.timerCircle.classList.remove('active');
-        clearInterval(this.timerInterval);
-
-        // Reset session data
-        this.sessionCount = 0;
-        this.currentSessionType = 'work';
-
-        this.setTimerForCurrentSession();
-        this.updateDisplay();
-        this.updateProgressRing();
-        this.updateSessionDisplay();
-        this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
-
-        this.showNotification('Session Reset', 'Pomodoro session has been reset to the beginning! 🔄');
-    }
-
-    skipBreak() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            // Stop current timer
-            this.isRunning = false;
-            this.isPaused = false;
-            clearInterval(this.timerInterval);
-            this.timerCircle.classList.remove('active');
-
-            // Switch to work session
-            this.currentSessionType = 'work';
-            this.setTimerForCurrentSession();
-            this.updateDisplay();
-            this.updateProgressRing();
-            this.updateSessionDisplay();
-            this.updateTrayTitle();
-            this.updateSkipButtonVisibility();
-
-            this.showNotification('Break Skipped', 'Back to work! Time to focus! 🎯');
-            this.saveSettings();
-        }
-    }
-
-    updateSkipButtonVisibility() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            this.skipBtn.style.display = 'flex';
-        } else {
-            this.skipBtn.style.display = 'none';
-        }
-    }
-
-    setTimerForCurrentSession() {
-        switch (this.currentSessionType) {
-            case 'work':
-                this.currentTime = this.workDuration * 60;
-                this.totalTime = this.workDuration * 60;
-                break;
-            case 'shortBreak':
-                this.currentTime = this.shortBreakDuration * 60;
-                this.totalTime = this.shortBreakDuration * 60;
-                break;
-            case 'longBreak':
-                this.currentTime = this.longBreakDuration * 60;
-                this.totalTime = this.longBreakDuration * 60;
-                break;
-        }
-    }
-
-    completeSession() {
-        this.isRunning = false;
-        this.isPaused = false;
-        clearInterval(this.timerInterval);
-        this.timerCircle.classList.remove('active');
-
-        // Add to total time spent
-        this.totalTimeSpent += this.totalTime;
-
-        if (this.currentSessionType === 'work') {
-            this.completedSessions++;
-            this.sessionCount++;
-
-            // Determine next session type based on break type preference
-            if (this.breakType === 'short') {
-                this.currentSessionType = 'shortBreak';
-            } else if (this.breakType === 'long') {
-                this.currentSessionType = 'longBreak';
-            } else {
-                // Normal cycle
-                if (this.sessionCount % 4 === 0) {
-                    this.currentSessionType = 'longBreak';
-                } else {
-                    this.currentSessionType = 'shortBreak';
-                }
-            }
-
-            const breakType = this.currentSessionType === 'longBreak' ? 'long break' : 'short break';
-            this.showNotification('Work Session Complete!', `Time for a ${breakType}! ${this.currentSessionType === 'longBreak' ? '🌟' : '☕'}`);
-            this.playNotificationSound();
-        } else {
-            this.currentSessionType = 'work';
-            if (this.currentSessionType === 'longBreak') {
-                this.showNotification('Long Break Complete!', 'Ready to start fresh! 🚀');
-                this.playNotificationSound();
-            } else {
-                this.showNotification('Break Complete!', 'Time to focus! 🎯');
-                this.playNotificationSound();
-            }
-        }
-
-        this.updateSessionDisplay();
-        this.resetTimer();
-        this.saveStats();
-        this.saveSettings();
-        this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
-
-        // Auto-start next session if enabled
-        if ((this.currentSessionType !== 'work' && this.autoBreak) ||
-            (this.currentSessionType === 'work' && this.autoWork)) {
-            setTimeout(() => {
-                this.startTimer();
-            }, 2000); // 2 second delay before auto-start
-        }
-    }
-
-    updateDisplay() {
-        const minutes = Math.floor(this.currentTime / 60);
-        const seconds = this.currentTime % 60;
-        this.timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-
-    updateProgressRing() {
-        if (this.totalTime === 0) return;
-
-        const progress = (this.totalTime - this.currentTime) / this.totalTime;
-        const offset = this.circumference - (progress * this.circumference);
-        this.progressCircle.style.strokeDashoffset = offset;
-
-        // Update colors based on session type and current theme
-        let color = getComputedStyle(document.documentElement).getPropertyValue('--progress-work').trim();
-        if (this.currentSessionType === 'shortBreak') {
-            color = getComputedStyle(document.documentElement).getPropertyValue('--progress-short-break').trim();
-        } else if (this.currentSessionType === 'longBreak') {
-            color = getComputedStyle(document.documentElement).getPropertyValue('--progress-long-break').trim();
-        }
-        this.progressCircle.setAttribute('stroke', color);
-    }
-
-    updateSessionDisplay() {
-        let sessionTypeText = '';
-        switch (this.currentSessionType) {
-            case 'work':
-                sessionTypeText = 'Focus Time';
-                break;
-            case 'shortBreak':
-                sessionTypeText = 'Short Break';
-                break;
-            case 'longBreak':
-                sessionTypeText = 'Long Break';
-                break;
-        }
-
-        this.sessionType.textContent = sessionTypeText;
-        this.sessionNumber.textContent = Math.floor(this.sessionCount / 4) * 4 + Math.min(this.sessionCount % 4 + 1, 4);
-        this.completedSessionsDisplay.textContent = this.completedSessions;
-
-        const hours = Math.floor(this.totalTimeSpent / 3600);
-        const minutes = Math.floor((this.totalTimeSpent % 3600) / 60);
-        this.totalTimeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    }
-
-    async showNotification(title, body) {
-        try {
-            await ipcRenderer.invoke('show-notification', title, body);
-        } catch (error) {
-            console.error('Failed to show notification:', error);
-        }
-    }
-
-    async updateTrayTitle() {
-        let title = '';
-        if (this.isRunning) {
-            const minutes = Math.floor(this.currentTime / 60);
-            const seconds = this.currentTime % 60;
-            title = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        } else if (this.isPaused) {
-            title = '⏸';
-        } else {
-            title = '';
-        }
-
-        try {
-            await ipcRenderer.invoke('update-tray-title', title);
-        } catch (error) {
-            console.error('Failed to update tray title:', error);
-        }
-    }
-
-    saveStats() {
-        const stats = {
-            completedSessions: this.completedSessions,
-            totalTimeSpent: this.totalTimeSpent,
-            sessionCount: this.sessionCount
-        };
-        localStorage.setItem('pomodoroStats', JSON.stringify(stats));
-    }
-
-    loadStats() {
-        const savedStats = localStorage.getItem('pomodoroStats');
-        if (savedStats) {
-            const stats = JSON.parse(savedStats);
-            this.completedSessions = stats.completedSessions || 0;
-            this.totalTimeSpent = stats.totalTimeSpent || 0;
-            this.sessionCount = stats.sessionCount || 0;
-        }
-        this.updateSessionDisplay();
-    }
-
-    setupGoalEventListeners() {
-        this.addGoalBtn.addEventListener('click', () => this.showAddGoalForm());
-        this.saveGoalBtn.addEventListener('click', () => this.saveGoal());
-        this.cancelGoalBtn.addEventListener('click', () => this.hideAddGoalForm());
-
-        this.goalInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.saveGoal();
-            } else if (e.key === 'Escape') {
-                this.hideAddGoalForm();
-            }
         });
-    }
 
-    showAddGoalForm() {
-        this.addGoalForm.style.display = 'block';
-        this.goalInput.focus();
-        this.addGoalBtn.style.display = 'none';
-    }
+        this.timer.on('timer:started', (data) => {
+            this.display.updateButtonStates(true, false);
+            this.updateTrayTitle();
+        });
 
-    hideAddGoalForm() {
-        this.addGoalForm.style.display = 'none';
-        this.goalInput.value = '';
-        this.addGoalBtn.style.display = 'block';
-    }
+        this.timer.on('timer:paused', (data) => {
+            this.display.updateButtonStates(false, true);
+            this.updateTrayTitle();
+        });
 
-    saveGoal() {
-        const goalText = this.goalInput.value.trim();
-        if (goalText) {
-            const goal = {
-                id: Date.now(),
-                text: goalText,
-                completed: false
+        this.timer.on('timer:reset', (data) => {
+            this.display.updateState(this.timer.state);
+            this.updateTrayTitle();
+        });
+
+        this.timer.on('session:completed', async (data) => {
+            // Show notification
+            await NotificationService.showTimerComplete(data.previousSessionType, data.nextSessionType);
+
+            // Play sound
+            await AudioService.play();
+
+            // Update display
+            this.display.updateState(this.timer.state);
+
+            // Save stats
+            this.currentStats = {
+                completedSessions: data.completedSessions,
+                totalTimeSpent: data.totalTimeSpent,
+                sessionCount: data.sessionCount
             };
-            this.goals.push(goal);
-            this.saveGoals();
-            this.renderGoals();
-            this.hideAddGoalForm();
-        }
+            Storage.saveStats(this.currentStats);
+            this.statsDisplay.updateStats(this.currentStats);
+
+            this.updateTrayTitle();
+        });
+
+        this.timer.on('session:skipped', async (data) => {
+            // Show notification
+            await NotificationService.showSessionSkipped(data.previousSessionType, data.nextSessionType);
+
+            // Update display
+            this.display.updateState(this.timer.state);
+
+            // Save stats if work session was skipped
+            if (data.previousSessionType === 'work') {
+                this.currentStats = {
+                    completedSessions: data.completedSessions,
+                    totalTimeSpent: this.currentStats.totalTimeSpent,
+                    sessionCount: data.sessionCount
+                };
+                Storage.saveStats(this.currentStats);
+                this.statsDisplay.updateStats(this.currentStats);
+            }
+        });
+
+        this.timer.on('session:reset', async (data) => {
+            await NotificationService.showSessionReset();
+            this.display.updateState(this.timer.state);
+        });
+
+        this.timer.on('stats:cleared', (data) => {
+            this.currentStats = data;
+            Storage.saveStats(this.currentStats);
+            this.statsDisplay.updateStats(this.currentStats);
+            this.display.updateState(this.timer.state);
+        });
+
+        // Display events
+        this.display.onStartPause(() => {
+            if (this.timer.isRunning) {
+                this.timer.pause();
+            } else {
+                this.timer.start();
+            }
+        });
+
+        this.display.onReset(() => {
+            this.timer.resetSession();
+        });
+
+        this.display.onSkip(() => {
+            this.timer.skip();
+        });
+
+        // Window/document events
+        this.setupWindowEventListeners();
     }
 
-    toggleGoal(goalId) {
-        const goal = this.goals.find(g => g.id === goalId);
-        if (goal) {
-            goal.completed = !goal.completed;
-            this.saveGoals();
-            this.renderGoals();
-        }
+    setupHotkeyActions() {
+        if (!this.hotkeyManager) return;
+
+        // Register hotkey actions
+        this.hotkeyManager.registerAction('startPause', () => {
+            if (this.timer.isRunning) {
+                this.timer.pause();
+            } else {
+                this.timer.start();
+            }
+        });
+
+        this.hotkeyManager.registerAction('reset', () => {
+            this.timer.resetSession();
+        });
+
+        this.hotkeyManager.registerAction('settings', () => {
+            if (this.settingsModal) {
+                this.settingsModal.open();
+            }
+        });
+
+        this.hotkeyManager.registerAction('addGoal', () => {
+            if (this.goalsManager) {
+                this.goalsManager.showAddGoalForm();
+            }
+        });
     }
 
-    deleteGoal(goalId) {
-        this.goals = this.goals.filter(g => g.id !== goalId);
-        this.saveGoals();
-        this.renderGoals();
-    }
 
-    renderGoals() {
-        const hasGoals = this.goals.length > 0;
 
-        if (hasGoals) {
-            this.noGoalsMessage.style.display = 'none';
-            this.goalsList.innerHTML = this.goals.map(goal => `
-                <div class="goal-item ${goal.completed ? 'completed' : ''}" data-goal-id="${goal.id}">
-                    <div class="goal-checkbox ${goal.completed ? 'completed' : ''}" 
-                         onclick="pomodoroTimer.toggleGoal(${goal.id})">
-                    </div>
-                    <div class="goal-text">${this.escapeHtml(goal.text)}</div>
-                    <button class="goal-delete" onclick="pomodoroTimer.deleteGoal(${goal.id})"
-                            title="Delete goal">×</button>
-                </div>
-            `).join('');
-        } else {
-            this.noGoalsMessage.style.display = 'flex';
-            this.goalsList.innerHTML = '';
-            this.goalsList.appendChild(this.noGoalsMessage);
-        }
-    }
+    setupWindowEventListeners() {
+        // Handle window focus/blur for better UX
+        window.addEventListener('focus', () => {
+            document.body.style.opacity = '1';
+            // Ensure progress ring is properly displayed when window gains focus
+            setTimeout(() => {
+                this.display.updateProgress(this.timer.state.progress, this.timer.state.sessionType);
+            }, 50);
+        });
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+        window.addEventListener('blur', () => {
+            document.body.style.opacity = '0.9';
+        });
 
-    saveGoals() {
-        localStorage.setItem('pomodoroGoals', JSON.stringify(this.goals));
-    }
-
-    loadGoals() {
-        const savedGoals = localStorage.getItem('pomodoroGoals');
-        if (savedGoals) {
-            this.goals = JSON.parse(savedGoals);
-        }
-        this.renderGoals();
-    }
-
-    setupThemeEventListener() {
-        // Theme is now handled through the settings modal
-    }
-
-    changeTheme(themeName) {
-        this.currentTheme = themeName;
-        document.documentElement.setAttribute('data-theme', themeName);
-        this.saveTheme();
-        this.saveSettings();
-        this.updateProgressRingColors();
-    }
-
-    updateProgressRingColors() {
-        // Update progress ring colors based on session type and theme
-        let color = getComputedStyle(document.documentElement).getPropertyValue('--progress-work').trim();
-        if (this.currentSessionType === 'shortBreak') {
-            color = getComputedStyle(document.documentElement).getPropertyValue('--progress-short-break').trim();
-        } else if (this.currentSessionType === 'longBreak') {
-            color = getComputedStyle(document.documentElement).getPropertyValue('--progress-long-break').trim();
-        }
-        this.progressCircle.setAttribute('stroke', color);
-
-        // Update progress ring glow effect
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
-        this.progressCircle.parentElement.style.filter = `drop-shadow(0 0 20px ${primaryColor}30)`;
-    }
-
-    saveTheme() {
-        localStorage.setItem('pomodoroTheme', this.currentTheme);
-    }
-
-    loadTheme() {
-        const savedTheme = localStorage.getItem('pomodoroTheme');
-        if (savedTheme) {
-            this.currentTheme = savedTheme;
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        } else {
-            // Set default theme
-            this.currentTheme = 'neon';
-            document.documentElement.setAttribute('data-theme', 'neon');
-        }
-
-        // Update progress ring colors after theme is loaded
-        setTimeout(() => {
-            this.updateProgressRingColors();
-        }, 100);
-    }
-
-    initializeProgressRing() {
-        // Wait for CSS to be fully loaded and applied
-        setTimeout(() => {
-            // Re-initialize progress ring properties
-            const radius = this.progressCircle.r.baseVal.value;
-            this.circumference = 2 * Math.PI * radius;
-            this.progressCircle.style.strokeDasharray = `${this.circumference} ${this.circumference}`;
-            this.progressCircle.style.strokeDashoffset = this.circumference;
-
-            // Update display and progress ring
-            this.updateDisplay();
-            this.updateProgressRing();
-            this.updateProgressRingColors();
-            this.updateSkipButtonVisibility();
-
-            console.log('Progress ring initialized:', {
-                radius,
-                circumference: this.circumference,
-                currentTime: this.currentTime,
-                totalTime: this.totalTime
-            });
-        }, 200);
-    }
-
-    hideLoadingScreen() {
-        // Wait a bit to ensure everything is rendered properly
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (loadingScreen) {
-                loadingScreen.classList.add('fade-out');
-                // Remove from DOM after fade animation
+        // Handle document visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // App became visible, ensure display is properly rendered
                 setTimeout(() => {
-                    loadingScreen.style.display = 'none';
-                }, 500);
-            }
-        }, 800); // Show loading for at least 800ms
-    }
-
-    saveSettings() {
-        const settings = {
-            workDuration: this.workDuration,
-            shortBreakDuration: this.shortBreakDuration,
-            longBreakDuration: this.longBreakDuration,
-            theme: this.currentTheme,
-            autoBreak: this.autoBreak,
-            autoWork: this.autoWork,
-            breakType: this.breakType,
-            hotkeys: this.hotkeys
-        };
-        localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
-    }
-
-    loadSettings() {
-        const savedSettings = localStorage.getItem('pomodoroSettings');
-        if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
-
-            // Load timer durations
-            if (settings.workDuration) {
-                this.workDuration = settings.workDuration;
-            }
-            if (settings.shortBreakDuration) {
-                this.shortBreakDuration = settings.shortBreakDuration;
-            }
-            if (settings.longBreakDuration) {
-                this.longBreakDuration = settings.longBreakDuration;
-            }
-
-            // Load auto-break settings
-            if (settings.autoBreak !== undefined) {
-                this.autoBreak = settings.autoBreak;
-            }
-            if (settings.autoWork !== undefined) {
-                this.autoWork = settings.autoWork;
-            }
-            if (settings.breakType) {
-                this.breakType = settings.breakType;
-            }
-
-            // Load hotkeys
-            if (settings.hotkeys) {
-                this.hotkeys = { ...this.hotkeys, ...settings.hotkeys };
-                this.updateHotkeyInputs();
-            }
-
-            // Update timer display if not running
-            if (!this.isRunning && !this.isPaused) {
-                this.setTimerForCurrentSession();
-                this.updateDisplay();
-                this.updateProgressRing();
-            }
-        }
-    }
-
-    playNotificationSound() {
-        // Create and play a notification sound
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        // Create a pleasant notification sound (two-tone chime)
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-    }
-
-    showClearSessionsConfirmation() {
-        const confirmed = confirm(
-            'Are you sure you want to clear all session data?\n\n' +
-            'This will reset:\n' +
-            '• Completed sessions count\n' +
-            '• Total time spent\n' +
-            '• Session counter\n\n' +
-            'This action cannot be undone.'
-        );
-
-        if (confirmed) {
-            this.clearAllSessions();
-        }
-    }
-
-    clearAllSessions() {
-        // Reset all session data
-        this.completedSessions = 0;
-        this.totalTimeSpent = 0;
-        this.sessionCount = 0;
-        this.currentSessionType = 'work';
-
-        // Reset timer if running
-        if (this.isRunning || this.isPaused) {
-            this.resetTimer();
-        }
-
-        // Update displays
-        this.updateSessionDisplay();
-        this.updateDisplay();
-        this.updateProgressRing();
-
-        // Save the cleared state
-        this.saveStats();
-        this.saveSettings();
-
-        // Show confirmation
-        this.showNotification('Sessions Cleared', 'All session data has been reset. Ready for a fresh start! 🌟');
-
-        // Close settings modal if it's open
-        this.closeSettingsModal();
-    }
-
-    openSettingsModal() {
-        // Load current settings into modal
-        this.modalThemeSelector.value = this.currentTheme;
-        this.modalWorkDurationInput.value = this.workDuration;
-        this.modalShortBreakDurationInput.value = this.shortBreakDuration;
-        this.modalLongBreakDurationInput.value = this.longBreakDuration;
-        this.autoBreakToggle.checked = this.autoBreak;
-        this.autoWorkToggle.checked = this.autoWork;
-
-        // Set radio button based on break type
-        const breakTypeValue = this.breakType === 'normal' ? 'alternate' : this.breakType;
-        this.breakTypeRadios.forEach(radio => {
-            radio.checked = radio.value === breakTypeValue;
-        });
-
-        // Load hotkey values
-        this.updateHotkeyInputs();
-
-        this.settingsModal.classList.add('show');
-    }
-
-    closeSettingsModal() {
-        this.settingsModal.classList.remove('show');
-    }
-
-    saveSettingsFromModal() {
-        // Get values from modal
-        const newTheme = this.modalThemeSelector.value;
-        const newWorkDuration = parseInt(this.modalWorkDurationInput.value);
-        const newShortBreakDuration = parseInt(this.modalShortBreakDurationInput.value);
-        const newLongBreakDuration = parseInt(this.modalLongBreakDurationInput.value);
-        const newAutoBreak = this.autoBreakToggle.checked;
-        const newAutoWork = this.autoWorkToggle.checked;
-
-        // Get selected radio button value
-        let newBreakType = 'normal';
-        this.breakTypeRadios.forEach(radio => {
-            if (radio.checked) {
-                newBreakType = radio.value === 'alternate' ? 'normal' : radio.value;
+                    this.display.updateState(this.timer.state);
+                }, 100);
             }
         });
-
-        // Apply settings
-        if (newTheme !== this.currentTheme) {
-            this.changeTheme(newTheme);
-        }
-
-        this.workDuration = newWorkDuration;
-        this.shortBreakDuration = newShortBreakDuration;
-        this.longBreakDuration = newLongBreakDuration;
-        this.autoBreak = newAutoBreak;
-        this.autoWork = newAutoWork;
-        this.breakType = newBreakType;
-
-        // Reset timer if not running and duration changed
-        if (!this.isRunning && !this.isPaused) {
-            this.resetTimer();
-        }
-
-        this.saveSettings();
-        this.closeSettingsModal();
-        this.showNotification('Settings Saved', 'Your preferences have been updated! ⚙️');
     }
 
-    resetSettingsToDefaults() {
-        const confirmed = confirm(
-            'Reset all settings to default values?\n\n' +
-            'This will reset:\n' +
-            '• Theme to Neon Vibes\n' +
-            '• Work duration to 25 minutes\n' +
-            '• Short break to 5 minutes\n' +
-            '• Long break to 15 minutes\n' +
-            '• Auto-break settings to off\n\n' +
-            'This action cannot be undone.'
-        );
 
-        if (confirmed) {
-            // Reset to defaults
-            this.currentTheme = 'neon';
-            this.workDuration = 25;
-            this.shortBreakDuration = 5;
-            this.longBreakDuration = 15;
-            this.autoBreak = false;
-            this.autoWork = false;
-            this.breakType = 'normal';
 
-            // Update modal inputs
-            this.modalThemeSelector.value = this.currentTheme;
-            this.modalWorkDurationInput.value = this.workDuration;
-            this.modalShortBreakDurationInput.value = this.shortBreakDuration;
-            this.modalLongBreakDurationInput.value = this.longBreakDuration;
-            this.autoBreakToggle.checked = this.autoBreak;
-            this.autoWorkToggle.checked = this.autoWork;
+    async initializeElectronFeatures() {
+        if (!Environment.canUseIPC()) return;
 
-            // Update radio buttons
-            const breakTypeValue = this.breakType === 'normal' ? 'alternate' : this.breakType;
-            this.breakTypeRadios.forEach(radio => {
-                radio.checked = radio.value === breakTypeValue;
+        try {
+            // Initialize DevTools toggle if in development
+            if (Environment.isDevelopment()) {
+                this.initializeDevTools();
+            }
+
+            // Initialize update service if available
+            if (Environment.canAutoUpdate()) {
+                await this.initializeUpdateService();
+            }
+
+        } catch (error) {
+            console.warn('Failed to initialize Electron features:', error);
+        }
+    }
+
+    initializeDevTools() {
+        const devtoolsToggle = document.getElementById('devtoolsToggle');
+        if (devtoolsToggle) {
+            devtoolsToggle.style.display = 'flex';
+            devtoolsToggle.addEventListener('click', async () => {
+                try {
+                    await Environment.invokeIPC('toggle-devtools');
+                } catch (error) {
+                    console.error('Failed to toggle DevTools:', error);
+                }
             });
-
-            // Apply theme
-            this.changeTheme(this.currentTheme);
-
-            // Reset timer if not running
-            if (!this.isRunning && !this.isPaused) {
-                this.resetTimer();
-            }
-
-            this.saveSettings();
-            this.showNotification('Settings Reset', 'All settings have been reset to defaults! 🔄');
         }
     }
 
-    setupHotkeyListeners() {
-        // Global hotkey listener
-        document.addEventListener('keydown', (e) => {
-            // Don't trigger hotkeys when typing in inputs or if modal is open
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
-                this.settingsModal.classList.contains('show')) {
-                return;
-            }
-
-            const key = this.getKeyString(e);
-
-            // Check if this key combination matches any hotkey
-            if (key === this.hotkeys.startPause) {
-                e.preventDefault();
-                this.toggleTimer();
-            } else if (key === this.hotkeys.reset) {
-                e.preventDefault();
-                this.resetTimer();
-            } else if (key === this.hotkeys.settings) {
-                e.preventDefault();
-                this.openSettingsModal();
-            } else if (key === this.hotkeys.addGoal) {
-                e.preventDefault();
-                this.showAddGoalForm();
-            }
-        });
-
-        // Hotkey input listeners
-        this.hotkeyStartPause.addEventListener('click', () => this.recordHotkey('startPause'));
-        this.hotkeyReset.addEventListener('click', () => this.recordHotkey('reset'));
-        this.hotkeySettings.addEventListener('click', () => this.recordHotkey('settings'));
-        this.hotkeyAddGoal.addEventListener('click', () => this.recordHotkey('addGoal'));
-
-        // Clear hotkey buttons
-        document.getElementById('clearStartPause').addEventListener('click', () => this.clearHotkey('startPause'));
-        document.getElementById('clearReset').addEventListener('click', () => this.clearHotkey('reset'));
-        document.getElementById('clearSettings').addEventListener('click', () => this.clearHotkey('settings'));
-        document.getElementById('clearAddGoal').addEventListener('click', () => this.clearHotkey('addGoal'));
-
-        // Load hotkeys into inputs
-        this.updateHotkeyInputs();
-    }
-
-    setupTabListeners() {
-        this.tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const tabName = button.dataset.tab;
-                this.switchTab(tabName);
-            });
+    async initializeUpdateService() {
+        // Set up update event listeners
+        Environment.onIPC('update-status', (event, status, data) => {
+            this.handleUpdateStatus(status, data);
         });
     }
 
-    switchTab(tabName) {
-        // Remove active class from all tabs and buttons
-        this.tabButtons.forEach(btn => btn.classList.remove('active'));
-        this.tabContents.forEach(content => content.classList.remove('active'));
-
-        // Add active class to selected tab and button
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        document.getElementById(`${tabName}-tab`).classList.add('active');
+    handleUpdateStatus(status, data) {
+        // Handle update status changes
+        console.log('Update status:', status, data);
+        // Implementation would go here for update UI
     }
 
-    getKeyString(event) {
-        const modifiers = [];
-        if (event.ctrlKey) modifiers.push('Ctrl');
-        if (event.altKey) modifiers.push('Alt');
-        if (event.shiftKey) modifiers.push('Shift');
-        if (event.metaKey) modifiers.push('Cmd');
+    // Theme management (delegated to ThemeManager)
+    applyTheme(themeName) {
+        if (this.themeManager) {
+            this.themeManager.applyTheme(themeName);
+            this.currentTheme = themeName;
+        }
+    }
 
-        let key = event.code;
+    // Stats display update (delegated to StatsDisplay)
+    updateStatsDisplay() {
+        if (this.statsDisplay) {
+            this.statsDisplay.updateStats(this.currentStats);
+        }
+    }
 
-        // Convert common keys to readable format
-        const keyMap = {
-            'Space': 'Space',
-            'Enter': 'Enter',
-            'Escape': 'Esc',
-            'Backspace': 'Backspace',
-            'Tab': 'Tab',
-            'ArrowUp': '↑',
-            'ArrowDown': '↓',
-            'ArrowLeft': '←',
-            'ArrowRight': '→'
-        };
+    // Tray title update (delegated to TrayManager)
+    async updateTrayTitle() {
+        if (this.trayManager) {
+            await this.trayManager.updateTimerDisplay(
+                this.timer.currentTime,
+                this.timer.isRunning,
+                this.timer.isPaused
+            );
+        }
+    }
 
-        if (keyMap[key]) {
-            key = keyMap[key];
-        } else if (key.startsWith('Key')) {
-            key = key.replace('Key', '');
-        } else if (key.startsWith('Digit')) {
-            key = key.replace('Digit', '');
+    // Loading screen management (delegated to LoadingScreen)
+    hideLoadingScreen() {
+        if (this.loadingScreen) {
+            this.loadingScreen.hide();
+        }
+    }
+
+    showFallbackMessage() {
+        if (this.loadingScreen) {
+            this.loadingScreen.showError('Failed to load. Please refresh the page.');
+        }
+    }
+
+
+
+    // Goals functionality (delegated to GoalsManager)
+    removeGoal(goalId) {
+        if (this.goalsManager) {
+            this.goalsManager.removeGoal(goalId);
+            this.currentGoals = this.goalsManager.getGoals();
+        }
+    }
+
+    // Cleanup
+    destroy() {
+        // Core components
+        if (this.timer) {
+            this.timer.destroy();
+        }
+        if (this.display) {
+            this.display.destroy();
         }
 
-        return modifiers.length > 0 ? `${modifiers.join('+')}+${key}` : key;
-    }
+        // UI components
+        if (this.goalsManager) {
+            this.goalsManager.destroy();
+        }
+        if (this.statsDisplay) {
+            this.statsDisplay.destroy();
+        }
+        if (this.themeManager) {
+            this.themeManager.destroy();
+        }
+        if (this.hotkeyManager) {
+            this.hotkeyManager.destroy();
+        }
+        if (this.loadingScreen) {
+            this.loadingScreen.destroy();
+        }
 
-    recordHotkey(action) {
-        const input = this[`hotkey${action.charAt(0).toUpperCase() + action.slice(1)}`];
+        // Platform-specific components
+        if (this.trayManager) {
+            this.trayManager.destroy();
+        }
 
-        this.isRecordingHotkey = action;
-        input.classList.add('recording');
-        input.value = 'Press any key combination...';
-        input.focus();
+        // Services
+        AudioService.destroy();
 
-        const recordKeydown = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const keyString = this.getKeyString(e);
-            this.hotkeys[action] = keyString;
-            input.value = keyString;
-            input.classList.remove('recording');
-
-            this.isRecordingHotkey = null;
-            this.saveSettings();
-
-            document.removeEventListener('keydown', recordKeydown, true);
-        };
-
-        document.addEventListener('keydown', recordKeydown, true);
-    }
-
-    clearHotkey(action) {
-        this.hotkeys[action] = '';
-        this[`hotkey${action.charAt(0).toUpperCase() + action.slice(1)}`].value = '';
-        this.saveSettings();
-    }
-
-    updateHotkeyInputs() {
-        this.hotkeyStartPause.value = this.hotkeys.startPause || '';
-        this.hotkeyReset.value = this.hotkeys.reset || '';
-        this.hotkeySettings.value = this.hotkeys.settings || '';
-        this.hotkeyAddGoal.value = this.hotkeys.addGoal || '';
+        // Clear global references
+        window.goalsManager = null;
+        window.statsDisplay = null;
+        window.themeManager = null;
     }
 }
 
-// Initialize the timer when the page loads
-let pomodoroTimer;
+// Initialize app when DOM is ready
+let app;
 document.addEventListener('DOMContentLoaded', () => {
-    pomodoroTimer = new PomodoroTimer();
+    console.log('DOM loaded, creating PomodoroApp...');
+    try {
+        app = new PomodoroApp();
+        // Global reference for debugging
+        window.app = app;
+        console.log('PomodoroApp created successfully');
+    } catch (error) {
+        console.error('Failed to create PomodoroApp:', error);
+
+        // Show error message instead of loading screen
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            const loadingText = loadingScreen.querySelector('.loading-text');
+            if (loadingText) {
+                loadingText.textContent = `Error: ${error.message}`;
+                loadingText.style.color = '#ff6b6b';
+            }
+        }
+    }
 });
 
-// Handle window focus/blur for better UX
-window.addEventListener('focus', () => {
-    document.body.style.opacity = '1';
-    // Ensure progress ring is properly displayed when window gains focus
-    if (pomodoroTimer) {
-        setTimeout(() => {
-            pomodoroTimer.updateProgressRing();
-            pomodoroTimer.updateProgressRingColors();
-        }, 50);
-    }
-
-    // Hide loading screen if still visible (backup)
+// Fallback: Force hide loading screen after 10 seconds
+setTimeout(() => {
     const loadingScreen = document.getElementById('loadingScreen');
     if (loadingScreen && loadingScreen.style.display !== 'none') {
-        loadingScreen.classList.add('fade-out');
-        setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 500);
+        console.warn('Loading screen timeout - forcing hide');
+        loadingScreen.style.display = 'none';
     }
-});
-
-window.addEventListener('blur', () => {
-    document.body.style.opacity = '0.9';
-});
-
-// Handle document visibility changes (when app is shown/hidden)
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && pomodoroTimer) {
-        // App became visible, ensure progress ring is properly rendered
-        setTimeout(() => {
-            pomodoroTimer.updateProgressRing();
-            pomodoroTimer.updateProgressRingColors();
-            console.log('Progress ring refreshed due to visibility change');
-        }, 100);
-    }
-}); 
+}, 10000);

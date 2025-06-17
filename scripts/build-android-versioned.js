@@ -30,6 +30,8 @@ try {
     const filesToCopy = [
         'index.html',
         'styles.css',
+        'renderer.js',
+        'src',
         'assets'
     ];
 

@@ -387,6 +387,68 @@ ipcMain.handle('toggle-devtools', async (event) => {
 });
 
 // Auto-updater IPC handlers
+ipcMain.handle('check-for-updates-manual', async () => {
+    if (process.env.NODE_ENV === 'development') {
+        return { available: false, message: 'Updates not available in development mode' };
+    }
+
+    if (!app.isPackaged) {
+        return { available: false, message: 'Updates only work in packaged app builds' };
+    }
+
+    try {
+        console.log('Manual update check requested...');
+
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Update check timed out')), 15000); // 15 second timeout
+        });
+
+        updateCheckResult = await Promise.race([
+            autoUpdater.checkForUpdates(),
+            timeoutPromise
+        ]);
+
+        if (updateCheckResult && updateCheckResult.updateInfo) {
+            const currentVersion = app.getVersion();
+            const newVersion = updateCheckResult.updateInfo.version;
+            console.log(`Update check result: ${currentVersion} vs ${newVersion}`);
+            return {
+                available: newVersion !== currentVersion,
+                version: newVersion,
+                currentVersion: currentVersion
+            };
+        } else {
+            return { available: false, message: 'No update information available' };
+        }
+    } catch (error) {
+        console.error('Error checking for updates:', error);
+
+        // Sanitize error message to avoid displaying HTML/SVG content
+        let errorMessage = error.message || 'Unknown error occurred';
+
+        // Check if error message contains HTML or base64 content (common in GitHub 500 errors)
+        if (errorMessage.includes('<html>') ||
+            errorMessage.includes('data:image') ||
+            errorMessage.includes('base64') ||
+            errorMessage.length > 200) {
+
+            // Provide a user-friendly error message instead
+            if (error.code === 'ENOTFOUND' || errorMessage.includes('getaddrinfo')) {
+                errorMessage = 'Network connection failed - please check your internet connection';
+            } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+                errorMessage = 'GitHub servers are temporarily unavailable - please try again later';
+            } else if (errorMessage.includes('timeout')) {
+                errorMessage = 'Request timed out - please try again';
+            } else {
+                errorMessage = 'Unable to check for updates - please try again later';
+            }
+        }
+
+        return { available: false, error: errorMessage };
+    }
+});
+
 ipcMain.handle('check-for-updates', async () => {
     if (process.env.NODE_ENV === 'development') {
         return { available: false, message: 'Updates not available in development mode' };
