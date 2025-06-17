@@ -51,6 +51,29 @@
         </div>
     </div>
 
+    <!-- Update Notification Banner -->
+    <div class="update-banner" id="updateBanner" style="display: none;">
+        <div class="update-content">
+            <div class="update-info">
+                <span class="update-icon">🚀</span>
+                <div class="update-text">
+                    <div class="update-title" id="updateTitle">Update Available</div>
+                    <div class="update-message" id="updateMessage">A new version is ready to install</div>
+                </div>
+            </div>
+            <div class="update-actions">
+                <button class="btn btn-secondary btn-small" id="dismissUpdateBtn">Later</button>
+                <button class="btn btn-primary btn-small" id="installUpdateBtn">Install</button>
+            </div>
+        </div>
+        <div class="update-progress" id="updateProgress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Downloading update...</div>
+        </div>
+    </div>
+
     <div class="app-container">
         <header class="header">
             <div class="header-content">
@@ -103,27 +126,14 @@
                 <div class="modal-body">
                     <div class="settings-tabs">
                         <button class="tab-button active" data-tab="general">General</button>
+                        <button class="tab-button" data-tab="sound">Sound</button>
                         <button class="tab-button" data-tab="hotkeys">Hotkeys</button>
                     </div>
 
                     <div class="settings-content">
                         <div class="tab-content active" id="general-tab">
                             <div class="settings-section">
-                                <h3>Appearance</h3>
-                                <div class="setting-group">
-                                    <label for="themeSelector">Theme</label>
-                                    <select id="themeSelector">
-                                        <option value="neon">Neon Vibes</option>
-                                        <option value="classic">Classic Red</option>
-                                        <option value="forest">Forest Green</option>
-                                        <option value="sunset">Sunset Orange</option>
-                                        <option value="ocean">Ocean Blue</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="settings-section">
-                                <h3>Timer Durations</h3>
+                                <h3>Timer Configuration</h3>
                                 <div class="setting-group">
                                     <label for="workDurationInput">Work Session (minutes)</label>
                                     <input type="number" id="workDurationInput" min="1" max="60" value="25">
@@ -139,28 +149,26 @@
                             </div>
 
                             <div class="settings-section">
-                                <h3>Break Type Preference</h3>
-                                <div class="radio-group">
-                                    <label class="radio-label">
-                                        <input type="radio" name="breakType" value="short" checked>
-                                        <span class="radio-custom"></span>
-                                        Always use short breaks
-                                    </label>
-                                    <label class="radio-label">
-                                        <input type="radio" name="breakType" value="long">
-                                        <span class="radio-custom"></span>
-                                        Always use long breaks
-                                    </label>
-                                    <label class="radio-label">
-                                        <input type="radio" name="breakType" value="alternate">
-                                        <span class="radio-custom"></span>
-                                        Alternate (long break every 4th session)
-                                    </label>
+                                <h3>Break Behavior</h3>
+                                <div class="setting-group">
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="breakType" value="short" checked>
+                                            <span class="radio-custom"></span>
+                                            Always use short breaks
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="breakType" value="long">
+                                            <span class="radio-custom"></span>
+                                            Always use long breaks
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="breakType" value="alternate">
+                                            <span class="radio-custom"></span>
+                                            Alternate (long break every 4th session)
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="settings-section">
-                                <h3>Auto Break Settings</h3>
                                 <div class="setting-group">
                                     <label for="autoStartBreaks">Auto-start breaks</label>
                                     <div class="toggle-switch">
@@ -178,12 +186,87 @@
                             </div>
 
                             <div class="settings-section">
-                                <h3>Data Management</h3>
+                                <h3>Appearance</h3>
+                                <div class="setting-group">
+                                    <label for="themeSelector">Theme</label>
+                                    <select id="themeSelector">
+                                        <option value="neon">Neon Vibes</option>
+                                        <option value="classic">Classic Red</option>
+                                        <option value="forest">Forest Green</option>
+                                        <option value="sunset">Sunset Orange</option>
+                                        <option value="ocean">Ocean Blue</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Data & Privacy</h3>
                                 <div class="setting-group">
                                     <button class="btn btn-danger" id="clearAllSessions">Clear All Sessions</button>
                                 </div>
                             </div>
+
+                            <div class="settings-section" id="updateInfoSection" style="display: none;">
+                                <h3>Update Information</h3>
+                                <div class="setting-group">
+                                    <div class="update-details" id="updateDetails">
+                                        <div class="update-version">New Version: <span id="newVersion"></span></div>
+                                        <div class="update-release-notes" id="updateReleaseNotes"></div>
+                                    </div>
+                                    <div class="update-buttons">
+                                        <button class="btn btn-secondary" id="downloadUpdateBtn"
+                                            style="display: none;">Download Update</button>
+                                        <button class="btn btn-primary" id="installNowBtn"
+                                            style="display: none;">Install Now</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>App Version</h3>
+                                <div class="setting-group">
+                                    <div class="version-display">
+                                        <span class="current-version">Current Version: <strong
+                                                id="currentVersion">1.0.0</strong></span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <button class="btn btn-primary" id="checkUpdatesBtn">Check for Updates</button>
+                                    <div class="update-status" id="updateStatus"></div>
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="tab-content" id="sound-tab">
+                            <div class="settings-section">
+                                <h3>Audio Settings</h3>
+                                <div class="setting-group">
+                                    <label for="soundEnabled">Enable Timer Sounds</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="soundEnabled" checked>
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="volumeSlider">Volume</label>
+                                    <div class="volume-control">
+                                        <svg class="volume-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                        </svg>
+                                        <input type="range" id="volumeSlider" min="0" max="100" value="70"
+                                            class="volume-slider">
+                                        <span class="volume-value" id="volumeValue">70%</span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <button class="btn btn-secondary" id="testSoundBtn">Test Sound</button>
+                                </div>
+                            </div>
+                        </div>
+
+
 
                         <div class="tab-content" id="hotkeys-tab">
                             <div class="hotkey-instructions-top">
@@ -236,11 +319,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <div class="version-info">v1.0.0</div>
-                    <div class="footer-buttons">
-                        <button class="btn btn-secondary" id="restoreDefaults">Restore Defaults</button>
-                        <button class="btn btn-primary" id="saveSettings">Save</button>
-                    </div>
+                    <button class="btn btn-secondary" id="restoreDefaults">Restore Defaults</button>
+                    <button class="btn btn-primary" id="saveSettings">Save</button>
                 </div>
             </div>
         </div>

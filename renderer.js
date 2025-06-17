@@ -32,6 +32,11 @@ class PomodoroTimer {
         this.autoWork = false;
         this.breakType = 'normal'; // 'normal', 'short', 'long'
 
+        // Audio settings
+        this.soundEnabled = true;
+        this.volume = 0.7; // 70% volume
+        this.audioElement = null;
+
         // Hotkeys
         this.hotkeys = {
             startPause: 'Space',
@@ -53,9 +58,15 @@ class PomodoroTimer {
         this.setupThemeEventListener();
         this.setupHotkeyListeners();
         this.setupTabListeners();
+        this.setupUpdateListeners();
 
         // Ensure progress ring is properly initialized after everything is loaded
         this.initializeProgressRing();
+
+        // Initialize volume slider background after a brief delay
+        setTimeout(() => {
+            this.updateVolumeSliderBackground();
+        }, 100);
 
         // Hide loading screen after a brief delay to show the loading animation
         setTimeout(() => {
@@ -98,6 +109,15 @@ class PomodoroTimer {
         // Tab elements
         this.tabButtons = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
+
+        // Audio elements
+        this.soundEnabledToggle = document.getElementById('soundEnabled');
+        this.volumeSlider = document.getElementById('volumeSlider');
+        this.volumeValue = document.getElementById('volumeValue');
+        this.testSoundBtn = document.getElementById('testSoundBtn');
+
+        // Initialize audio
+        this.initializeAudio();
 
         // Stats
         this.completedSessionsDisplay = document.getElementById('completedSessions');
@@ -147,6 +167,32 @@ class PomodoroTimer {
                 this.closeSettingsModal();
             }
         });
+
+        // Audio control listeners
+        if (this.soundEnabledToggle) {
+            this.soundEnabledToggle.addEventListener('change', () => {
+                this.soundEnabled = this.soundEnabledToggle.checked;
+                this.saveSettings();
+            });
+        }
+
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', () => {
+                this.volume = this.volumeSlider.value / 100;
+                this.volumeValue.textContent = `${this.volumeSlider.value}%`;
+                this.updateVolumeSliderBackground();
+                if (this.audioElement) {
+                    this.audioElement.volume = this.volume;
+                }
+                this.saveSettings();
+            });
+        }
+
+        if (this.testSoundBtn) {
+            this.testSoundBtn.addEventListener('click', () => {
+                this.playNotificationSound();
+            });
+        }
     }
 
     toggleTimer() {
@@ -589,7 +635,9 @@ class PomodoroTimer {
             autoBreak: this.autoBreak,
             autoWork: this.autoWork,
             breakType: this.breakType,
-            hotkeys: this.hotkeys
+            hotkeys: this.hotkeys,
+            soundEnabled: this.soundEnabled,
+            volume: this.volume
         };
         localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
@@ -627,6 +675,17 @@ class PomodoroTimer {
                 this.updateHotkeyInputs();
             }
 
+            // Load audio settings
+            if (settings.soundEnabled !== undefined) {
+                this.soundEnabled = settings.soundEnabled;
+            }
+            if (settings.volume !== undefined) {
+                this.volume = settings.volume;
+                if (this.audioElement) {
+                    this.audioElement.volume = this.volume;
+                }
+            }
+
             // Update timer display if not running
             if (!this.isRunning && !this.isPaused) {
                 this.setTimerForCurrentSession();
@@ -637,25 +696,43 @@ class PomodoroTimer {
     }
 
     playNotificationSound() {
-        // Create and play a notification sound
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        if (!this.soundEnabled) {
+            return;
+        }
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        try {
+            if (this.audioElement) {
+                this.audioElement.currentTime = 0;
+                this.audioElement.volume = this.volume;
+                this.audioElement.play().catch(error => {
+                    console.log('Audio play failed (user interaction required):', error);
+                });
+            } else {
+                console.log('🔔 Timer finished! (Audio not loaded)');
+            }
+        } catch (error) {
+            console.error('Failed to play notification sound:', error);
+        }
+    }
 
-        // Create a pleasant notification sound (two-tone chime)
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+    initializeAudio() {
+        try {
+            this.audioElement = new Audio('assets/timer-finish.wav');
+            this.audioElement.preload = 'auto';
+            this.audioElement.volume = this.volume;
+        } catch (error) {
+            console.error('Failed to load audio:', error);
+        }
+    }
 
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
+    updateVolumeSliderBackground() {
+        if (this.volumeSlider) {
+            const percentage = this.volumeSlider.value;
+            const color = `var(--primary-color)`;
+            const bgColor = `var(--surface-color)`;
+            this.volumeSlider.style.background =
+                `linear-gradient(to right, ${color} 0%, ${color} ${percentage}%, ${bgColor} ${percentage}%, ${bgColor} 100%)`;
+        }
     }
 
     showClearSessionsConfirmation() {
@@ -719,6 +796,16 @@ class PomodoroTimer {
         // Load hotkey values
         this.updateHotkeyInputs();
 
+        // Load audio settings
+        if (this.soundEnabledToggle) {
+            this.soundEnabledToggle.checked = this.soundEnabled;
+        }
+        if (this.volumeSlider) {
+            this.volumeSlider.value = Math.round(this.volume * 100);
+            this.volumeValue.textContent = `${Math.round(this.volume * 100)}%`;
+            this.updateVolumeSliderBackground();
+        }
+
         this.settingsModal.classList.add('show');
     }
 
@@ -755,6 +842,17 @@ class PomodoroTimer {
         this.autoWork = newAutoWork;
         this.breakType = newBreakType;
 
+        // Get audio settings
+        if (this.soundEnabledToggle) {
+            this.soundEnabled = this.soundEnabledToggle.checked;
+        }
+        if (this.volumeSlider) {
+            this.volume = this.volumeSlider.value / 100;
+            if (this.audioElement) {
+                this.audioElement.volume = this.volume;
+            }
+        }
+
         // Reset timer if not running and duration changed
         if (!this.isRunning && !this.isPaused) {
             this.resetTimer();
@@ -786,6 +884,8 @@ class PomodoroTimer {
             this.autoBreak = false;
             this.autoWork = false;
             this.breakType = 'normal';
+            this.soundEnabled = true;
+            this.volume = 0.7;
 
             // Update modal inputs
             this.modalThemeSelector.value = this.currentTheme;
@@ -800,6 +900,19 @@ class PomodoroTimer {
             this.breakTypeRadios.forEach(radio => {
                 radio.checked = radio.value === breakTypeValue;
             });
+
+            // Update audio settings
+            if (this.soundEnabledToggle) {
+                this.soundEnabledToggle.checked = this.soundEnabled;
+            }
+            if (this.volumeSlider) {
+                this.volumeSlider.value = Math.round(this.volume * 100);
+                this.volumeValue.textContent = `${Math.round(this.volume * 100)}%`;
+                this.updateVolumeSliderBackground();
+                if (this.audioElement) {
+                    this.audioElement.volume = this.volume;
+                }
+            }
 
             // Apply theme
             this.changeTheme(this.currentTheme);
@@ -946,6 +1059,235 @@ class PomodoroTimer {
         this.hotkeyReset.value = this.hotkeys.reset || '';
         this.hotkeySettings.value = this.hotkeys.settings || '';
         this.hotkeyAddGoal.value = this.hotkeys.addGoal || '';
+    }
+
+    // Auto-update functionality
+    setupUpdateListeners() {
+        // Update banner elements
+        this.updateBanner = document.getElementById('updateBanner');
+        this.updateTitle = document.getElementById('updateTitle');
+        this.updateMessage = document.getElementById('updateMessage');
+        this.updateProgress = document.getElementById('updateProgress');
+        this.progressFill = document.getElementById('progressFill');
+        this.progressText = document.getElementById('progressText');
+        this.dismissUpdateBtn = document.getElementById('dismissUpdateBtn');
+        this.installUpdateBtn = document.getElementById('installUpdateBtn');
+
+        // Updates tab elements
+        this.currentVersionElement = document.getElementById('currentVersion');
+        this.checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
+        this.updateStatus = document.getElementById('updateStatus');
+        this.updateInfoSection = document.getElementById('updateInfoSection');
+        this.updateDetails = document.getElementById('updateDetails');
+        this.newVersion = document.getElementById('newVersion');
+        this.updateReleaseNotes = document.getElementById('updateReleaseNotes');
+        this.downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+        this.installNowBtn = document.getElementById('installNowBtn');
+
+        // Set up event listeners
+        if (this.dismissUpdateBtn) {
+            this.dismissUpdateBtn.addEventListener('click', () => this.dismissUpdateBanner());
+        }
+
+        if (this.installUpdateBtn) {
+            this.installUpdateBtn.addEventListener('click', () => this.installUpdate());
+        }
+
+        if (this.checkUpdatesBtn) {
+            this.checkUpdatesBtn.addEventListener('click', () => this.checkForUpdates());
+        }
+
+        if (this.downloadUpdateBtn) {
+            this.downloadUpdateBtn.addEventListener('click', () => this.downloadUpdate());
+        }
+
+        if (this.installNowBtn) {
+            this.installNowBtn.addEventListener('click', () => this.installUpdate());
+        }
+
+        // Listen for update events from main process
+        if (ipcRenderer) {
+            ipcRenderer.on('update-status', (event, status, data) => {
+                this.handleUpdateStatus(status, data);
+            });
+        }
+
+        // Load current version
+        this.loadCurrentVersion();
+    }
+
+    async loadCurrentVersion() {
+        if (ipcRenderer) {
+            try {
+                const version = await ipcRenderer.invoke('get-app-version');
+                const platformInfo = await ipcRenderer.invoke('get-platform-info');
+
+                if (this.currentVersionElement) {
+                    const platformText = this.getPlatformDisplayName(platformInfo.platform);
+                    this.currentVersionElement.innerHTML = `${version} <span style="font-weight: normal; opacity: 0.7;">(${platformText})</span>`;
+                }
+            } catch (error) {
+                console.error('Failed to get app version:', error);
+            }
+        }
+    }
+
+    getPlatformDisplayName(platform) {
+        switch (platform) {
+            case 'darwin': return 'macOS';
+            case 'win32': return 'Windows';
+            case 'linux': return 'Linux';
+            default: return platform;
+        }
+    }
+
+    async checkForUpdates() {
+        if (!ipcRenderer) {
+            this.showUpdateStatus('error', 'Updates not available in this environment');
+            return;
+        }
+
+        this.showUpdateStatus('checking', 'Checking for updates...');
+        this.checkUpdatesBtn.disabled = true;
+        this.checkUpdatesBtn.textContent = 'Checking...';
+
+        try {
+            const result = await ipcRenderer.invoke('check-for-updates');
+
+            if (result.error) {
+                this.showUpdateStatus('error', `${result.error}`);
+            } else if (result.message) {
+                this.showUpdateStatus('not-available', result.message);
+            } else if (result.available) {
+                this.showUpdateStatus('available', `Update available: v${result.version}`);
+                if (result.version) {
+                    this.showUpdateInfo({ version: result.version });
+                }
+            } else {
+                this.showUpdateStatus('not-available', 'You have the latest version');
+            }
+        } catch (error) {
+            console.error('Failed to check for updates:', error);
+            this.showUpdateStatus('error', 'Network error - please check your connection');
+        } finally {
+            this.checkUpdatesBtn.disabled = false;
+            this.checkUpdatesBtn.textContent = 'Check for Updates';
+        }
+    }
+
+    async downloadUpdate() {
+        if (!ipcRenderer) return;
+
+        try {
+            const result = await ipcRenderer.invoke('download-update');
+            if (result.error) {
+                this.showUpdateStatus('error', `Download failed: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to download update:', error);
+            this.showUpdateStatus('error', 'Failed to download update');
+        }
+    }
+
+    async installUpdate() {
+        if (!ipcRenderer) return;
+
+        try {
+            const result = await ipcRenderer.invoke('install-update');
+            if (result.error) {
+                this.showUpdateStatus('error', `Installation failed: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to install update:', error);
+            this.showUpdateStatus('error', 'Failed to install update');
+        }
+    }
+
+    handleUpdateStatus(status, data) {
+        switch (status) {
+            case 'checking':
+                this.showUpdateStatus('checking', 'Checking for updates...');
+                break;
+
+            case 'available':
+                this.showUpdateStatus('available', `Update available: v${data.version}`);
+                this.showUpdateBanner('Update Available', `Version ${data.version} is ready to download`);
+                this.showUpdateInfo(data);
+                break;
+
+            case 'not-available':
+                this.showUpdateStatus('not-available', 'You have the latest version');
+                break;
+
+            case 'error':
+                this.showUpdateStatus('error', `Error: ${data}`);
+                break;
+
+            case 'downloading':
+                this.showUpdateStatus('downloading', `Downloading... ${Math.round(data.percent)}%`);
+                this.showUpdateProgress(data.percent, `Downloading update... ${Math.round(data.percent)}%`);
+                break;
+
+            case 'downloaded':
+                this.showUpdateStatus('available', 'Update ready to install');
+                this.showUpdateBanner('Update Ready', 'The update has been downloaded and is ready to install');
+                this.hideUpdateProgress();
+                if (this.downloadUpdateBtn) this.downloadUpdateBtn.style.display = 'none';
+                if (this.installNowBtn) this.installNowBtn.style.display = 'inline-block';
+                break;
+        }
+    }
+
+    showUpdateStatus(type, message) {
+        if (!this.updateStatus) return;
+
+        this.updateStatus.className = `update-status ${type}`;
+        this.updateStatus.textContent = message;
+    }
+
+    showUpdateBanner(title, message) {
+        if (!this.updateBanner) return;
+
+        this.updateTitle.textContent = title;
+        this.updateMessage.textContent = message;
+        this.updateBanner.style.display = 'block';
+        document.body.classList.add('update-banner-visible');
+    }
+
+    dismissUpdateBanner() {
+        if (this.updateBanner) {
+            this.updateBanner.style.display = 'none';
+            document.body.classList.remove('update-banner-visible');
+        }
+    }
+
+    showUpdateProgress(percent, text) {
+        if (!this.updateProgress) return;
+
+        this.updateProgress.style.display = 'block';
+        this.progressFill.style.width = `${percent}%`;
+        this.progressText.textContent = text;
+    }
+
+    hideUpdateProgress() {
+        if (this.updateProgress) {
+            this.updateProgress.style.display = 'none';
+        }
+    }
+
+    showUpdateInfo(updateInfo) {
+        if (!this.updateInfoSection) return;
+
+        this.updateInfoSection.style.display = 'block';
+        this.newVersion.textContent = updateInfo.version;
+
+        if (updateInfo.releaseNotes) {
+            this.updateReleaseNotes.textContent = updateInfo.releaseNotes;
+        } else {
+            this.updateReleaseNotes.textContent = 'Release notes not available';
+        }
+
+        if (this.downloadUpdateBtn) this.downloadUpdateBtn.style.display = 'inline-block';
     }
 }
 

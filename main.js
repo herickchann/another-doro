@@ -1,10 +1,12 @@
 const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, Notification } = require('electron');
 const path = require('path');
 const windowStateKeeper = require('electron-window-state');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let tray;
 let mainWindowState;
+let updateCheckResult = null;
 
 // Manual window state backup
 function saveManualWindowState() {
@@ -58,6 +60,75 @@ if (process.env.NODE_ENV === 'development') {
     require('electron-reload')(__dirname, {
         electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
         hardResetMethod: 'exit'
+    });
+}
+
+// Configure auto-updater
+function configureAutoUpdater() {
+    // Don't check for updates in development
+    if (process.env.NODE_ENV === 'development') {
+        console.log('Auto-updater disabled in development mode');
+        return;
+    }
+
+    // Only enable auto-updater for packaged apps
+    if (!app.isPackaged) {
+        console.log('Auto-updater disabled for unpackaged app');
+        return;
+    }
+
+    // Configure auto-updater
+    autoUpdater.checkForUpdatesAndNotify();
+
+    // Check for updates every 4 hours
+    setInterval(() => {
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 4 * 60 * 60 * 1000);
+
+    // Auto-updater event handlers
+    autoUpdater.on('checking-for-update', () => {
+        console.log('Checking for updates...');
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'checking');
+        }
+    });
+
+    autoUpdater.on('update-available', (info) => {
+        console.log('Update available:', info.version);
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'available', info);
+        }
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+        console.log('Update not available');
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'not-available', info);
+        }
+    });
+
+    autoUpdater.on('error', (err) => {
+        console.error('Auto-updater error:', err);
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'error', err.message);
+        }
+    });
+
+    autoUpdater.on('download-progress', (progressObj) => {
+        let log_message = "Download speed: " + progressObj.bytesPerSecond;
+        log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+        log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+        console.log(log_message);
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'downloading', progressObj);
+        }
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+        console.log('Update downloaded:', info.version);
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'downloaded', info);
+        }
     });
 }
 
@@ -201,6 +272,7 @@ function createTray() {
 app.whenReady().then(() => {
     createWindow();
     createTray();
+    configureAutoUpdater();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -253,4 +325,74 @@ ipcMain.handle('toggle-devtools', async (event) => {
             mainWindow.webContents.openDevTools();
         }
     }
+});
+
+// Auto-updater IPC handlers
+ipcMain.handle('check-for-updates', async () => {
+    if (process.env.NODE_ENV === 'development') {
+        return { available: false, message: 'Updates not available in development mode' };
+    }
+
+    if (!app.isPackaged) {
+        return { available: false, message: 'Updates only work in packaged app builds' };
+    }
+
+    try {
+        updateCheckResult = await autoUpdater.checkForUpdates();
+        if (updateCheckResult && updateCheckResult.updateInfo) {
+            const currentVersion = app.getVersion();
+            const newVersion = updateCheckResult.updateInfo.version;
+            return {
+                available: newVersion !== currentVersion,
+                version: newVersion,
+                currentVersion: currentVersion
+            };
+        } else {
+            return { available: false, message: 'No update information available' };
+        }
+    } catch (error) {
+        console.error('Error checking for updates:', error);
+        return { available: false, error: error.message };
+    }
+});
+
+ipcMain.handle('download-update', async () => {
+    if (process.env.NODE_ENV === 'development') {
+        return { success: false, message: 'Updates not available in development mode' };
+    }
+
+    try {
+        await autoUpdater.downloadUpdate();
+        return { success: true };
+    } catch (error) {
+        console.error('Error downloading update:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('install-update', async () => {
+    if (process.env.NODE_ENV === 'development') {
+        return { success: false, message: 'Updates not available in development mode' };
+    }
+
+    try {
+        autoUpdater.quitAndInstall();
+        return { success: true };
+    } catch (error) {
+        console.error('Error installing update:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('get-app-version', async () => {
+    return app.getVersion();
+});
+
+ipcMain.handle('get-platform-info', async () => {
+    return {
+        platform: process.platform,
+        arch: process.arch,
+        isElectron: true,
+        version: app.getVersion()
+    };
 }); 
