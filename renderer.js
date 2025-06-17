@@ -1222,14 +1222,50 @@ class PomodoroTimer {
     async installUpdate() {
         if (!ipcRenderer) return;
 
+        // Show installing status
+        this.showUpdateStatus('downloading', 'Installing update...');
+
+        // Update popup button state
+        if (this.installUpdatePopupBtn) {
+            this.installUpdatePopupBtn.disabled = true;
+            this.installUpdatePopupBtn.textContent = 'Installing...';
+        }
+
+        // Update settings tab button state
+        if (this.installNowBtn) {
+            this.installNowBtn.disabled = true;
+            this.installNowBtn.textContent = 'Installing...';
+        }
+
         try {
+            console.log('Requesting update installation...');
             const result = await ipcRenderer.invoke('install-update');
-            if (result.error) {
+
+            if (result.success) {
+                this.showUpdateStatus('downloading', 'Restarting app...');
+                // The app should restart here, so this might not be reached
+            } else if (result.error) {
                 this.showUpdateStatus('error', `Installation failed: ${result.error}`);
+                this.resetInstallButtons();
             }
         } catch (error) {
             console.error('Failed to install update:', error);
             this.showUpdateStatus('error', 'Failed to install update');
+            this.resetInstallButtons();
+        }
+    }
+
+    resetInstallButtons() {
+        // Reset popup button
+        if (this.installUpdatePopupBtn) {
+            this.installUpdatePopupBtn.disabled = false;
+            this.installUpdatePopupBtn.textContent = 'Install Now';
+        }
+
+        // Reset settings tab button
+        if (this.installNowBtn) {
+            this.installNowBtn.disabled = false;
+            this.installNowBtn.textContent = 'Install Now';
         }
     }
 

@@ -77,12 +77,21 @@ function configureAutoUpdater() {
         return;
     }
 
-    // Configure auto-updater
-    autoUpdater.checkForUpdatesAndNotify();
+    // Configure auto-updater (non-blocking)
+    console.log('Configuring auto-updater for GitHub releases');
 
-    // Check for updates every 4 hours
-    setInterval(() => {
-        autoUpdater.checkForUpdatesAndNotify();
+    // Don't check immediately on configuration to avoid blocking startup
+
+    // Check for updates every 4 hours (background, non-blocking)
+    setInterval(async () => {
+        try {
+            console.log('Periodic update check (background)...');
+            autoUpdater.checkForUpdatesAndNotify().catch(error => {
+                console.log('Periodic update check failed (non-critical):', error.message);
+            });
+        } catch (error) {
+            console.log('Periodic update check error (non-critical):', error.message);
+        }
     }, 4 * 60 * 60 * 1000);
 
     // Auto-updater event handlers
@@ -128,6 +137,14 @@ function configureAutoUpdater() {
         console.log('Update downloaded:', info.version);
         if (mainWindow) {
             mainWindow.webContents.send('update-status', 'downloaded', info);
+        }
+    });
+
+    // Add additional error handling
+    autoUpdater.on('error', (error) => {
+        console.error('AutoUpdater error:', error);
+        if (mainWindow) {
+            mainWindow.webContents.send('update-status', 'error', error.message);
         }
     });
 }
@@ -214,6 +231,9 @@ function createWindow() {
             mainWindowState.saveState();
             saveManualWindowState();
             mainWindow.hide();
+        } else {
+            // Allow the app to quit for updates
+            console.log('App is quitting (possibly for update)');
         }
     });
 
@@ -269,18 +289,34 @@ function createTray() {
 }
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    // Create window and tray immediately for fast startup
     createWindow();
     createTray();
-    configureAutoUpdater();
 
-    // Check for updates on startup (after a delay to let the app fully load)
-    setTimeout(() => {
-        if (process.env.NODE_ENV !== 'development' && app.isPackaged) {
-            console.log('Checking for updates on startup...');
-            autoUpdater.checkForUpdatesAndNotify();
+    // Configure auto-updater in background (non-blocking)
+    setImmediate(() => {
+        try {
+            configureAutoUpdater();
+        } catch (error) {
+            console.log('Auto-updater configuration failed (non-critical):', error.message);
         }
-    }, 5000); // Wait 5 seconds after app starts
+    });
+
+    // Check for updates on startup (asynchronously, non-blocking, with longer delay)
+    setTimeout(async () => {
+        if (process.env.NODE_ENV !== 'development' && app.isPackaged) {
+            try {
+                console.log('Checking for updates on startup (background)...');
+                // Run update check asynchronously without blocking
+                autoUpdater.checkForUpdatesAndNotify().catch(error => {
+                    console.log('Background update check failed (non-critical):', error.message);
+                });
+            } catch (error) {
+                console.log('Background update check error (non-critical):', error.message);
+            }
+        }
+    }, 10000); // Increased to 10 seconds to ensure app is fully loaded
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -346,10 +382,22 @@ ipcMain.handle('check-for-updates', async () => {
     }
 
     try {
-        updateCheckResult = await autoUpdater.checkForUpdates();
+        console.log('Manual update check requested...');
+
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Update check timed out')), 15000); // 15 second timeout
+        });
+
+        updateCheckResult = await Promise.race([
+            autoUpdater.checkForUpdates(),
+            timeoutPromise
+        ]);
+
         if (updateCheckResult && updateCheckResult.updateInfo) {
             const currentVersion = app.getVersion();
             const newVersion = updateCheckResult.updateInfo.version;
+            console.log(`Update check result: ${currentVersion} vs ${newVersion}`);
             return {
                 available: newVersion !== currentVersion,
                 version: newVersion,
@@ -370,7 +418,19 @@ ipcMain.handle('download-update', async () => {
     }
 
     try {
-        await autoUpdater.downloadUpdate();
+        console.log('Starting update download...');
+
+        // Add timeout for download (5 minutes)
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Download timed out')), 5 * 60 * 1000);
+        });
+
+        await Promise.race([
+            autoUpdater.downloadUpdate(),
+            timeoutPromise
+        ]);
+
+        console.log('Update download completed');
         return { success: true };
     } catch (error) {
         console.error('Error downloading update:', error);
@@ -384,10 +444,15 @@ ipcMain.handle('install-update', async () => {
     }
 
     try {
-        autoUpdater.quitAndInstall();
+        console.log('Installing update...');
+        // Set the flag to allow quitting
+        app.isQuiting = true;
+        // Install the update and restart the app
+        autoUpdater.quitAndInstall(false, true);
         return { success: true };
     } catch (error) {
         console.error('Error installing update:', error);
+        app.isQuiting = false; // Reset flag if installation fails
         return { success: false, error: error.message };
     }
 });

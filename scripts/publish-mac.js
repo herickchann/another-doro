@@ -3,7 +3,7 @@
 const { Octokit } = require('@octokit/rest');
 const fs = require('fs');
 const path = require('path');
-const packageJson = require('../package.json');
+const { ReleaseConfig } = require('./release-config');
 
 async function publishMacOS() {
     // Check for GitHub token
@@ -13,15 +13,13 @@ async function publishMacOS() {
         process.exit(1);
     }
 
-    // Initialize Octokit
+    // Initialize Octokit and Release Config
     const octokit = new Octokit({
         auth: token,
     });
 
-    const owner = 'herickchann';
-    const repo = 'another-doro';
-    const version = packageJson.version;
-    const tagName = `v${version}`;
+    const releaseConfig = new ReleaseConfig();
+    const { owner, repo, version, tagName } = releaseConfig.getReleaseData();
     const versionDir = path.join(__dirname, '..', 'dist', `v${version}`);
 
     try {
@@ -60,63 +58,8 @@ async function publishMacOS() {
 
         console.log(`📦 Found ${filesToUpload.length} macOS files to upload`);
 
-        // Check if release exists
-        let release;
-        try {
-            const { data } = await octokit.rest.repos.getReleaseByTag({
-                owner,
-                repo,
-                tag: tagName,
-            });
-            release = data;
-            console.log(`✅ Found existing release: ${release.name}`);
-        } catch (error) {
-            if (error.status === 404) {
-                console.log('📝 Creating new release...');
-                const { data } = await octokit.rest.repos.createRelease({
-                    owner,
-                    repo,
-                    tag_name: tagName,
-                    name: `AnotherDoro v${version}`,
-                    body: `## 🍅 AnotherDoro v${version}
-
-### 📱 Multi-Platform Release
-This release includes builds for both desktop and mobile platforms:
-
-- **🖥️ Desktop (macOS):** Download the \`.dmg\` file below
-- **📱 Android:** Download the \`.apk\` file below
-
-### ✨ What's New
-- 🚀 Auto-update functionality for seamless updates
-- 🔄 Cross-platform synchronization
-- 🎨 Enhanced user interface
-- 🐛 Bug fixes and performance improvements
-- 📊 Better session tracking and statistics
-
-### 🔧 Installation Instructions
-
-**For macOS:**
-1. Download the \`.dmg\` file
-2. Open it and drag AnotherDoro to Applications
-3. Launch the app from Applications
-
-**For Android:**
-1. Download the \`.apk\` file
-2. Enable "Install from Unknown Sources" in Android settings
-3. Install the APK file
-4. Launch AnotherDoro from your app drawer
-
-### 🔄 Auto-Updates
-Desktop versions now support automatic updates! The app will notify you when new versions are available.`,
-                    draft: false,
-                    prerelease: version.includes('beta') || version.includes('alpha'),
-                });
-                release = data;
-                console.log(`✅ Created release: ${release.name}`);
-            } else {
-                throw error;
-            }
-        }
+        // Get or create release using centralized config
+        const release = await releaseConfig.getOrCreateRelease(octokit);
 
         // Remove existing macOS assets
         for (const asset of release.assets) {

@@ -14,56 +14,31 @@ const version = packageJson.version;
 console.log(`📦 Building version: ${version}\n`);
 
 try {
-    // Create version directory
-    const versionDir = path.join('dist', `v${version}`);
-    if (!fs.existsSync(versionDir)) {
-        fs.mkdirSync(versionDir, { recursive: true });
-        console.log(`📁 Created version directory: ${versionDir}\n`);
-    }
-
-    // Build macOS
+    // Build macOS (using versioned script that already handles directory organization)
     console.log('🖥️  Building macOS...');
-    execSync('npm run build:mac', { stdio: 'inherit' });
+    execSync('node scripts/build-mac-versioned.js', { stdio: 'inherit' });
 
-    // Move macOS files to version directory (only current version files)
-    const distFiles = fs.readdirSync('dist');
-    const macFiles = distFiles.filter(file =>
-        (file.includes('.dmg') ||
-            file.includes('.zip') ||
-            file.includes('.blockmap') ||
-            file.includes('latest-mac.yml')) &&
-        (file.includes(version) || file === 'latest-mac.yml')
-    );
-
-    macFiles.forEach(file => {
-        const sourcePath = path.join('dist', file);
-        const destPath = path.join(versionDir, file);
-        if (fs.existsSync(sourcePath)) {
-            fs.renameSync(sourcePath, destPath);
-            console.log(`   ✅ Moved ${file} to version directory`);
-        }
-    });
-
-    console.log('🖥️  macOS build completed\n');
-
-    // Build Android
+    // Build Android (using versioned script that already handles directory organization)
     console.log('📱 Building Android...');
-    execSync('node build-android.js --release', { stdio: 'inherit' });
-    console.log('📱 Android build completed\n');
+    execSync('node scripts/build-android-versioned.js --release', { stdio: 'inherit' });
 
     // Show final summary
     console.log('🎉 All builds completed successfully!');
-    console.log(`📁 Files organized in: ${versionDir}`);
+
+    const versionDir = path.join('dist', `v${version}`);
+    console.log(`📁 All files organized in: ${versionDir}`);
 
     // List files in version directory
-    const versionFiles = fs.readdirSync(versionDir);
-    console.log('\n📋 Built files:');
-    versionFiles.forEach(file => {
-        const filePath = path.join(versionDir, file);
-        const stats = fs.statSync(filePath);
-        const sizeInMB = (stats.size / (1024 * 1024)).toFixed(1);
-        console.log(`   📦 ${file} (${sizeInMB} MB)`);
-    });
+    if (fs.existsSync(versionDir)) {
+        const versionFiles = fs.readdirSync(versionDir);
+        console.log('\n📋 All built files:');
+        versionFiles.forEach(file => {
+            const filePath = path.join(versionDir, file);
+            const stats = fs.statSync(filePath);
+            const sizeInMB = (stats.size / (1024 * 1024)).toFixed(1);
+            console.log(`   📦 ${file} (${sizeInMB} MB)`);
+        });
+    }
 
 } catch (error) {
     console.error('\n❌ Build failed:', error.message);
