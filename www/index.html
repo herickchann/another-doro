@@ -110,10 +110,15 @@
                     <span class="btn-text">Start</span>
                 </button>
                 <button class="btn btn-secondary" id="resetBtn">
-                    <span class="btn-text">Reset Session</span>
+                    <span class="btn-text">Reset</span>
                 </button>
-                <button class="btn btn-tertiary" id="skipBtn" style="display: none;">
-                    <span class="btn-text">Skip Break</span>
+                <button class="btn btn-tertiary" id="skipBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5,4 15,12 5,20"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19"></line>
+                    </svg>
+                    <span class="btn-text">Skip</span>
                 </button>
             </div>
         </main>
@@ -299,6 +304,13 @@
                                             class="volume-slider">
                                         <span class="volume-value" id="volumeValue">70%</span>
                                     </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="soundSelector">Notification Sound</label>
+                                    <select id="soundSelector">
+                                        <option value="timer-finish.wav">Classic Timer</option>
+                                        <option value="doro-sound.mp3">Doro Bell</option>
+                                    </select>
                                 </div>
                                 <div class="setting-group">
                                     <button class="btn btn-secondary" id="testSoundBtn">Test Sound</button>

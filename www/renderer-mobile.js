@@ -122,7 +122,7 @@ class PomodoroTimer {
     setupEventListeners() {
         this.startPauseBtn.addEventListener('click', () => this.toggleTimer());
         this.resetBtn.addEventListener('click', () => this.resetPomodoroSession());
-        this.skipBtn.addEventListener('click', () => this.skipBreak());
+        this.skipBtn.addEventListener('click', () => this.skipToNext());
 
         // Settings modal listeners
         this.settingsBtn.addEventListener('click', () => this.openSettingsModal());
@@ -144,6 +144,21 @@ class PomodoroTimer {
                 this.closeSettingsModal();
             }
         });
+
+        // Auto-start toggle listeners
+        if (this.autoBreakToggle) {
+            this.autoBreakToggle.addEventListener('change', () => {
+                this.autoBreak = this.autoBreakToggle.checked;
+                this.saveSettings();
+            });
+        }
+
+        if (this.autoWorkToggle) {
+            this.autoWorkToggle.addEventListener('change', () => {
+                this.autoWork = this.autoWorkToggle.checked;
+                this.saveSettings();
+            });
+        }
     }
 
     toggleTimer() {
@@ -194,7 +209,6 @@ class PomodoroTimer {
         this.setTimerForCurrentSession();
         this.updateDisplay();
         this.updateProgressRing();
-        this.updateSkipButtonVisibility();
     }
 
     resetPomodoroSession() {
@@ -213,38 +227,62 @@ class PomodoroTimer {
         this.updateDisplay();
         this.updateProgressRing();
         this.updateSessionDisplay();
-        this.updateSkipButtonVisibility();
 
         this.showNotification('Session Reset', 'Pomodoro session has been reset to the beginning! 🔄');
     }
 
-    skipBreak() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            // Stop current timer
-            this.isRunning = false;
-            this.isPaused = false;
-            clearInterval(this.timerInterval);
-            this.timerCircle.classList.remove('active');
+    skipToNext() {
+        // Stop current timer
+        this.isRunning = false;
+        this.isPaused = false;
+        clearInterval(this.timerInterval);
+        this.timerCircle.classList.remove('active');
+        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
 
-            // Switch to work session
-            this.currentSessionType = 'work';
-            this.setTimerForCurrentSession();
-            this.updateDisplay();
-            this.updateProgressRing();
-            this.updateSessionDisplay();
-            this.updateSkipButtonVisibility();
+        // Determine next session type
+        let nextSessionType = '';
+        let notificationTitle = '';
+        let notificationMessage = '';
 
-            this.showNotification('Break Skipped', 'Back to work! Time to focus! 🎯');
-            this.saveSettings();
-        }
-    }
+        if (this.currentSessionType === 'work') {
+            // Skip work session - go to break
+            this.completedSessions++;
+            this.sessionCount++;
 
-    updateSkipButtonVisibility() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            this.skipBtn.style.display = 'flex';
+            // Determine break type based on break type preference
+            if (this.breakType === 'short') {
+                nextSessionType = 'shortBreak';
+            } else if (this.breakType === 'long') {
+                nextSessionType = 'longBreak';
+            } else {
+                // Normal cycle
+                if (this.sessionCount % 4 === 0) {
+                    nextSessionType = 'longBreak';
+                } else {
+                    nextSessionType = 'shortBreak';
+                }
+            }
+
+            const breakType = nextSessionType === 'longBreak' ? 'long break' : 'short break';
+            notificationTitle = 'Work Session Skipped';
+            notificationMessage = `Moving to ${breakType}! ${nextSessionType === 'longBreak' ? '🌟' : '☕'}`;
         } else {
-            this.skipBtn.style.display = 'none';
+            // Skip break session - go to work
+            nextSessionType = 'work';
+            notificationTitle = 'Break Skipped';
+            notificationMessage = 'Back to work! Time to focus! 🎯';
         }
+
+        // Update session type and timer
+        this.currentSessionType = nextSessionType;
+        this.setTimerForCurrentSession();
+        this.updateDisplay();
+        this.updateProgressRing();
+        this.updateSessionDisplay();
+
+        this.showNotification(notificationTitle, notificationMessage);
+        this.saveStats();
+        this.saveSettings();
     }
 
     setTimerForCurrentSession() {
@@ -309,7 +347,6 @@ class PomodoroTimer {
         this.resetTimer();
         this.saveStats();
         this.saveSettings();
-        this.updateSkipButtonVisibility();
 
         // Auto-start next session if enabled
         if ((this.currentSessionType !== 'work' && this.autoBreak) ||
@@ -548,7 +585,6 @@ class PomodoroTimer {
                 this.progressCircle.style.strokeDashoffset = this.circumference;
                 this.updateProgressRing();
                 this.updateProgressRingColors();
-                this.updateSkipButtonVisibility();
             }
         }, 100);
     }

@@ -119,7 +119,27 @@ function configureAutoUpdater() {
     autoUpdater.on('error', (err) => {
         console.error('Auto-updater error:', err);
         if (mainWindow) {
-            mainWindow.webContents.send('update-status', 'error', err.message);
+            // Sanitize error message to avoid displaying HTML/SVG content
+            let errorMessage = err.message || 'Unknown error occurred';
+
+            // Check if error message contains HTML or base64 content
+            if (errorMessage.includes('<html>') ||
+                errorMessage.includes('data:image') ||
+                errorMessage.includes('base64') ||
+                errorMessage.length > 200) {
+
+                if (err.code === 'ENOTFOUND' || errorMessage.includes('getaddrinfo')) {
+                    errorMessage = 'Network connection failed';
+                } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+                    errorMessage = 'GitHub servers are temporarily unavailable';
+                } else if (errorMessage.includes('timeout')) {
+                    errorMessage = 'Request timed out';
+                } else {
+                    errorMessage = 'Update check failed';
+                }
+            }
+
+            mainWindow.webContents.send('update-status', 'error', errorMessage);
         }
     });
 
@@ -140,13 +160,7 @@ function configureAutoUpdater() {
         }
     });
 
-    // Add additional error handling
-    autoUpdater.on('error', (error) => {
-        console.error('AutoUpdater error:', error);
-        if (mainWindow) {
-            mainWindow.webContents.send('update-status', 'error', error.message);
-        }
-    });
+    // Error handling is already set up above
 }
 
 function createWindow() {
@@ -408,7 +422,29 @@ ipcMain.handle('check-for-updates', async () => {
         }
     } catch (error) {
         console.error('Error checking for updates:', error);
-        return { available: false, error: error.message };
+
+        // Sanitize error message to avoid displaying HTML/SVG content
+        let errorMessage = error.message || 'Unknown error occurred';
+
+        // Check if error message contains HTML or base64 content (common in GitHub 500 errors)
+        if (errorMessage.includes('<html>') ||
+            errorMessage.includes('data:image') ||
+            errorMessage.includes('base64') ||
+            errorMessage.length > 200) {
+
+            // Provide a user-friendly error message instead
+            if (error.code === 'ENOTFOUND' || errorMessage.includes('getaddrinfo')) {
+                errorMessage = 'Network connection failed - please check your internet connection';
+            } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+                errorMessage = 'GitHub servers are temporarily unavailable - please try again later';
+            } else if (errorMessage.includes('timeout')) {
+                errorMessage = 'Request timed out - please try again';
+            } else {
+                errorMessage = 'Unable to check for updates - please try again later';
+            }
+        }
+
+        return { available: false, error: errorMessage };
     }
 });
 
@@ -434,7 +470,28 @@ ipcMain.handle('download-update', async () => {
         return { success: true };
     } catch (error) {
         console.error('Error downloading update:', error);
-        return { success: false, error: error.message };
+
+        // Sanitize error message to avoid displaying HTML/SVG content
+        let errorMessage = error.message || 'Unknown error occurred';
+
+        // Check if error message contains HTML or base64 content
+        if (errorMessage.includes('<html>') ||
+            errorMessage.includes('data:image') ||
+            errorMessage.includes('base64') ||
+            errorMessage.length > 200) {
+
+            if (error.code === 'ENOTFOUND' || errorMessage.includes('getaddrinfo')) {
+                errorMessage = 'Network connection failed during download';
+            } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+                errorMessage = 'GitHub servers are temporarily unavailable';
+            } else if (errorMessage.includes('timeout')) {
+                errorMessage = 'Download timed out - please try again';
+            } else {
+                errorMessage = 'Download failed - please try again later';
+            }
+        }
+
+        return { success: false, error: errorMessage };
     }
 });
 
@@ -453,7 +510,20 @@ ipcMain.handle('install-update', async () => {
     } catch (error) {
         console.error('Error installing update:', error);
         app.isQuiting = false; // Reset flag if installation fails
-        return { success: false, error: error.message };
+
+        // Sanitize error message to avoid displaying HTML/SVG content
+        let errorMessage = error.message || 'Unknown error occurred';
+
+        // Check if error message contains HTML or base64 content
+        if (errorMessage.includes('<html>') ||
+            errorMessage.includes('data:image') ||
+            errorMessage.includes('base64') ||
+            errorMessage.length > 200) {
+
+            errorMessage = 'Installation failed - please try downloading the update again';
+        }
+
+        return { success: false, error: errorMessage };
     }
 });
 

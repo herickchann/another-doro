@@ -35,6 +35,7 @@ class PomodoroTimer {
         // Audio settings
         this.soundEnabled = true;
         this.volume = 0.7; // 70% volume
+        this.currentSound = 'timer-finish.wav'; // Default sound
         this.audioElement = null;
 
         // Hotkeys
@@ -115,6 +116,7 @@ class PomodoroTimer {
         this.soundEnabledToggle = document.getElementById('soundEnabled');
         this.volumeSlider = document.getElementById('volumeSlider');
         this.volumeValue = document.getElementById('volumeValue');
+        this.soundSelector = document.getElementById('soundSelector');
         this.testSoundBtn = document.getElementById('testSoundBtn');
 
         // Initialize audio
@@ -147,7 +149,7 @@ class PomodoroTimer {
     setupEventListeners() {
         this.startPauseBtn.addEventListener('click', () => this.toggleTimer());
         this.resetBtn.addEventListener('click', () => this.resetPomodoroSession());
-        this.skipBtn.addEventListener('click', () => this.skipBreak());
+        this.skipBtn.addEventListener('click', () => this.skipToNext());
 
         // Settings modal listeners
         this.settingsBtn.addEventListener('click', () => this.openSettingsModal());
@@ -190,9 +192,32 @@ class PomodoroTimer {
             });
         }
 
+        if (this.soundSelector) {
+            this.soundSelector.addEventListener('change', () => {
+                this.currentSound = this.soundSelector.value;
+                this.initializeAudio(); // Reload audio with new sound
+                this.saveSettings();
+            });
+        }
+
         if (this.testSoundBtn) {
             this.testSoundBtn.addEventListener('click', () => {
                 this.playNotificationSound();
+            });
+        }
+
+        // Auto-start toggle listeners
+        if (this.autoBreakToggle) {
+            this.autoBreakToggle.addEventListener('change', () => {
+                this.autoBreak = this.autoBreakToggle.checked;
+                this.saveSettings();
+            });
+        }
+
+        if (this.autoWorkToggle) {
+            this.autoWorkToggle.addEventListener('change', () => {
+                this.autoWork = this.autoWorkToggle.checked;
+                this.saveSettings();
             });
         }
     }
@@ -248,7 +273,6 @@ class PomodoroTimer {
         this.updateDisplay();
         this.updateProgressRing();
         this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
     }
 
     resetPomodoroSession() {
@@ -268,39 +292,63 @@ class PomodoroTimer {
         this.updateProgressRing();
         this.updateSessionDisplay();
         this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
 
         this.showNotification('Session Reset', 'Pomodoro session has been reset to the beginning! 🔄');
     }
 
-    skipBreak() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            // Stop current timer
-            this.isRunning = false;
-            this.isPaused = false;
-            clearInterval(this.timerInterval);
-            this.timerCircle.classList.remove('active');
+    skipToNext() {
+        // Stop current timer
+        this.isRunning = false;
+        this.isPaused = false;
+        clearInterval(this.timerInterval);
+        this.timerCircle.classList.remove('active');
+        this.startPauseBtn.innerHTML = '<span class="btn-text">Start</span>';
 
-            // Switch to work session
-            this.currentSessionType = 'work';
-            this.setTimerForCurrentSession();
-            this.updateDisplay();
-            this.updateProgressRing();
-            this.updateSessionDisplay();
-            this.updateTrayTitle();
-            this.updateSkipButtonVisibility();
+        // Determine next session type
+        let nextSessionType = '';
+        let notificationTitle = '';
+        let notificationMessage = '';
 
-            this.showNotification('Break Skipped', 'Back to work! Time to focus! 🎯');
-            this.saveSettings();
-        }
-    }
+        if (this.currentSessionType === 'work') {
+            // Skip work session - go to break
+            this.completedSessions++;
+            this.sessionCount++;
 
-    updateSkipButtonVisibility() {
-        if (this.currentSessionType === 'shortBreak' || this.currentSessionType === 'longBreak') {
-            this.skipBtn.style.display = 'flex';
+            // Determine break type based on break type preference
+            if (this.breakType === 'short') {
+                nextSessionType = 'shortBreak';
+            } else if (this.breakType === 'long') {
+                nextSessionType = 'longBreak';
+            } else {
+                // Normal cycle
+                if (this.sessionCount % 4 === 0) {
+                    nextSessionType = 'longBreak';
+                } else {
+                    nextSessionType = 'shortBreak';
+                }
+            }
+
+            const breakType = nextSessionType === 'longBreak' ? 'long break' : 'short break';
+            notificationTitle = 'Work Session Skipped';
+            notificationMessage = `Moving to ${breakType}! ${nextSessionType === 'longBreak' ? '🌟' : '☕'}`;
         } else {
-            this.skipBtn.style.display = 'none';
+            // Skip break session - go to work
+            nextSessionType = 'work';
+            notificationTitle = 'Break Skipped';
+            notificationMessage = 'Back to work! Time to focus! 🎯';
         }
+
+        // Update session type and timer
+        this.currentSessionType = nextSessionType;
+        this.setTimerForCurrentSession();
+        this.updateDisplay();
+        this.updateProgressRing();
+        this.updateSessionDisplay();
+        this.updateTrayTitle();
+
+        this.showNotification(notificationTitle, notificationMessage);
+        this.saveStats();
+        this.saveSettings();
     }
 
     setTimerForCurrentSession() {
@@ -366,7 +414,6 @@ class PomodoroTimer {
         this.saveStats();
         this.saveSettings();
         this.updateTrayTitle();
-        this.updateSkipButtonVisibility();
 
         // Auto-start next session if enabled
         if ((this.currentSessionType !== 'work' && this.autoBreak) ||
@@ -658,7 +705,6 @@ class PomodoroTimer {
             this.updateDisplay();
             this.updateProgressRing();
             this.updateProgressRingColors();
-            this.updateSkipButtonVisibility();
 
             console.log('Progress ring initialized:', {
                 radius,
@@ -694,7 +740,8 @@ class PomodoroTimer {
             breakType: this.breakType,
             hotkeys: this.hotkeys,
             soundEnabled: this.soundEnabled,
-            volume: this.volume
+            volume: this.volume,
+            currentSound: this.currentSound
         };
         localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
     }
@@ -742,6 +789,10 @@ class PomodoroTimer {
                     this.audioElement.volume = this.volume;
                 }
             }
+            if (settings.currentSound) {
+                this.currentSound = settings.currentSound;
+                this.initializeAudio(); // Reload audio with saved sound
+            }
 
             // Update timer display if not running
             if (!this.isRunning && !this.isPaused) {
@@ -774,7 +825,7 @@ class PomodoroTimer {
 
     initializeAudio() {
         try {
-            this.audioElement = new Audio('assets/timer-finish.wav');
+            this.audioElement = new Audio(`assets/${this.currentSound}`);
             this.audioElement.preload = 'auto';
             this.audioElement.volume = this.volume;
         } catch (error) {
@@ -862,6 +913,9 @@ class PomodoroTimer {
             this.volumeValue.textContent = `${Math.round(this.volume * 100)}%`;
             this.updateVolumeSliderBackground();
         }
+        if (this.soundSelector) {
+            this.soundSelector.value = this.currentSound;
+        }
 
         this.settingsModal.classList.add('show');
     }
@@ -943,6 +997,7 @@ class PomodoroTimer {
             this.breakType = 'normal';
             this.soundEnabled = true;
             this.volume = 0.7;
+            this.currentSound = 'timer-finish.wav';
 
             // Update modal inputs
             this.modalThemeSelector.value = this.currentTheme;
@@ -969,6 +1024,10 @@ class PomodoroTimer {
                 if (this.audioElement) {
                     this.audioElement.volume = this.volume;
                 }
+            }
+            if (this.soundSelector) {
+                this.soundSelector.value = this.currentSound;
+                this.initializeAudio(); // Reload audio with default sound
             }
 
             // Apply theme

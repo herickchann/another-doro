@@ -119,6 +119,9 @@ body {
     -webkit-font-smoothing: antialiased;
     transition: background 0.3s ease;
     -webkit-app-region: drag;
+    margin: 0;
+    padding: 0;
+    width: 100%;
 }
 
 /* Make interactive elements non-draggable */
@@ -202,7 +205,7 @@ textarea,
 .settings-icon {
     position: fixed;
     top: 40px;
-    right: 10px;
+    right: 20px;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
@@ -281,7 +284,7 @@ textarea,
 .controls {
     display: flex;
     gap: 16px;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .btn {
@@ -295,6 +298,7 @@ textarea,
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     min-width: 80px;
     font-family: inherit;
     -webkit-app-region: no-drag;
@@ -1213,18 +1217,7 @@ input:checked+.slider:before {
     gap: 12px;
 }
 
-.settings-tabs::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 2px;
-    height: 28px;
-    background: linear-gradient(180deg, transparent 0%, var(--surface-border) 20%, var(--surface-border) 80%, transparent 100%);
-    transform: translate(-50%, -50%);
-    opacity: 0.6;
-    border-radius: 1px;
-}
+/* Removed vertical divider that was overlapping with tabs */
 
 .tab-button {
     flex: 1;
