@@ -24,7 +24,7 @@
     "publish:minor": "node scripts/publish-with-version.js minor",
     "publish:major": "node scripts/publish-with-version.js major",
     "publish:all": "npm run build:all && npm run publish && npm run publish:android",
-    "publish:now": "npm run publish:patch",
+    "publish:now": "npm run build:all && npm run publish && npm run publish:android",
     "publish:android": "node scripts/publish-android.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
