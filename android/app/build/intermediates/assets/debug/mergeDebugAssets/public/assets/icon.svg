@@ -1,0 +1,102 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Main tomato gradient - cyberpunk neon theme -->
+    <radialGradient id="tomatoGradient" cx="40%" cy="30%" r="80%">
+      <stop offset="0%" style="stop-color:#c77dff;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#9d4edd;stop-opacity:1" />
+      <stop offset="80%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d1b2a;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Stem gradient -->
+    <linearGradient id="stemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06ffa5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Highlight gradient -->
+    <radialGradient id="highlightGradient" cx="30%" cy="20%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+    
+    <!-- Drop shadow -->
+    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offset" />
+      <feFlood flood-color="#00d4ff" flood-opacity="0.3"/>
+      <feComposite in2="offset" operator="in"/>
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Main tomato body - more circular and tomato-like -->
+  <circle cx="256" cy="280" r="180" 
+          fill="url(#tomatoGradient)" 
+          filter="url(#dropshadow)"
+          opacity="0.95"/>
+  
+  <!-- Tomato indentations for realistic shape -->
+  <path d="M 150 200 Q 200 180 250 200 Q 300 180 350 200 Q 320 220 280 210 Q 240 220 200 210 Q 170 220 150 200" 
+        fill="rgba(0, 212, 255, 0.15)" 
+        opacity="0.8"/>
+        
+  <path d="M 130 280 Q 180 260 230 280 Q 280 260 330 280 Q 300 300 260 290 Q 220 300 180 290 Q 150 300 130 280" 
+        fill="rgba(157, 78, 221, 0.15)" 
+        opacity="0.8"/>
+        
+  <path d="M 140 360 Q 190 340 240 360 Q 290 340 340 360 Q 310 380 270 370 Q 230 380 190 370 Q 160 380 140 360" 
+        fill="rgba(199, 125, 255, 0.15)" 
+        opacity="0.8"/>
+  
+  <!-- Tomato stem area - flattened top -->
+  <ellipse cx="256" cy="100" rx="80" ry="25" 
+           fill="url(#stemGradient)" 
+           opacity="0.9"/>
+  
+  <!-- Individual stem leaves -->
+  <ellipse cx="220" cy="95" rx="20" ry="35" 
+           fill="url(#stemGradient)" 
+           opacity="0.8"
+           transform="rotate(-25 220 95)"/>
+           
+  <ellipse cx="256" cy="85" rx="15" ry="30" 
+           fill="url(#stemGradient)" 
+           opacity="0.9"/>
+           
+  <ellipse cx="292" cy="95" rx="20" ry="35" 
+           fill="url(#stemGradient)" 
+           opacity="0.8"
+           transform="rotate(25 292 95)"/>
+  
+  <!-- Main highlight for 3D effect -->
+  <ellipse cx="200" cy="220" rx="60" ry="80" 
+           fill="url(#highlightGradient)" 
+           transform="rotate(-15 200 220)"/>
+  
+  <!-- Secondary smaller highlight -->
+  <ellipse cx="320" cy="320" rx="25" ry="35" 
+           fill="rgba(255, 255, 255, 0.2)" 
+           opacity="0.6"
+           transform="rotate(20 320 320)"/>
+           
+  <!-- Subtle glow around the entire tomato -->
+  <circle cx="256" cy="280" r="190" 
+          fill="none" 
+          stroke="url(#tomatoGradient)" 
+          stroke-width="1" 
+          opacity="0.3"
+          filter="url(#glow)"/>
+</svg> 

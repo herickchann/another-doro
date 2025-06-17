@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnotherDoro</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- DevTools Toggle Button (Development Only) -->
+    <div class="devtools-toggle" id="devtoolsToggle" style="display: none;">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 8L3 12L7 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            <path d="M17 8L21 12L17 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            <path d="M14 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+        </svg>
+    </div>
+
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="tomato-loader">
+                <div class="flat-tomato">
+                    <svg width="64" height="64" viewBox="0 0 100 100" fill="none">
+                        <!-- Tomato body -->
+                        <path
+                            d="M50 85C68.778 85 84 69.778 84 51C84 32.222 68.778 17 50 17C31.222 17 16 32.222 16 51C16 69.778 31.222 85 50 85Z"
+                            fill="currentColor" />
+                        <!-- Tomato stem -->
+                        <path d="M45 17C45 13 47 10 50 10C53 10 55 13 55 17" stroke="currentColor" stroke-width="2"
+                            fill="none" />
+                        <path d="M42 15C42 12 44 10 46 10" stroke="currentColor" stroke-width="1.5" fill="none" />
+                        <path d="M54 10C56 10 58 12 58 15" stroke="currentColor" stroke-width="1.5" fill="none" />
+                        <!-- Highlight -->
+                        <ellipse cx="40" cy="35" rx="8" ry="12" fill="rgba(255,255,255,0.3)" />
+                    </svg>
+                </div>
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            <div class="loading-text">Preparing your AnotherDoro...</div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">🍅 AnotherDoro</h1>
+                <div class="session-type" id="sessionType">Focus Time</div>
+            </div>
+            <button class="settings-icon" id="settingsBtn" title="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+            </button>
+        </header>
+
+        <main class="timer-section">
+            <div class="timer-circle">
+                <svg class="progress-ring" width="200" height="200">
+                    <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent" r="92"
+                        cx="100" cy="100" />
+                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="92"
+                        cx="100" cy="100" id="progressCircle" />
+                </svg>
+                <div class="timer-display">
+                    <div class="time" id="timeDisplay">25:00</div>
+                    <div class="session-number">Session <span id="sessionNumber">1</span></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startPauseBtn">
+                    <span class="btn-text">Start</span>
+                </button>
+                <button class="btn btn-secondary" id="resetBtn">
+                    <span class="btn-text">Reset</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- Settings Modal -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" id="closeSettings">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="settings-tabs">
+                        <button class="tab-button active" data-tab="general">General</button>
+                        <button class="tab-button" data-tab="hotkeys">Hotkeys</button>
+                    </div>
+
+                    <div class="settings-content">
+                        <div class="tab-content active" id="general-tab">
+                            <div class="settings-section">
+                                <h3>Appearance</h3>
+                                <div class="setting-group">
+                                    <label for="themeSelector">Theme</label>
+                                    <select id="themeSelector">
+                                        <option value="neon">Neon Vibes</option>
+                                        <option value="classic">Classic Red</option>
+                                        <option value="forest">Forest Green</option>
+                                        <option value="sunset">Sunset Orange</option>
+                                        <option value="ocean">Ocean Blue</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Timer Durations</h3>
+                                <div class="setting-group">
+                                    <label for="workDurationInput">Work Session (minutes)</label>
+                                    <input type="number" id="workDurationInput" min="1" max="60" value="25">
+                                </div>
+                                <div class="setting-group">
+                                    <label for="shortBreakDurationInput">Short Break (minutes)</label>
+                                    <input type="number" id="shortBreakDurationInput" min="1" max="30" value="5">
+                                </div>
+                                <div class="setting-group">
+                                    <label for="longBreakDurationInput">Long Break (minutes)</label>
+                                    <input type="number" id="longBreakDurationInput" min="1" max="60" value="15">
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Break Type Preference</h3>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="breakType" value="short" checked>
+                                        <span class="radio-custom"></span>
+                                        Always use short breaks
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="breakType" value="long">
+                                        <span class="radio-custom"></span>
+                                        Always use long breaks
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="breakType" value="alternate">
+                                        <span class="radio-custom"></span>
+                                        Alternate (long break every 4th session)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Auto Break Settings</h3>
+                                <div class="setting-group">
+                                    <label for="autoStartBreaks">Auto-start breaks</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="autoStartBreaks">
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="autoStartWork">Auto-start work after breaks</label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="autoStartWork">
+                                        <span class="slider"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Data Management</h3>
+                                <div class="setting-group">
+                                    <button class="btn btn-danger" id="clearAllSessions">Clear All Sessions</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-content" id="hotkeys-tab">
+                            <div class="hotkey-instructions-top">
+                                <p>Click on any hotkey field and press your desired key combination. Supports Ctrl, Alt,
+                                    Shift, Cmd modifiers.</p>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Timer Controls</h3>
+                                <div class="setting-group">
+                                    <label for="hotkeyStartPause">Start/Pause Timer</label>
+                                    <div class="hotkey-input">
+                                        <input type="text" id="hotkeyStartPause" readonly
+                                            placeholder="Click to set hotkey">
+                                        <button class="btn btn-secondary btn-small" id="clearStartPause">Clear</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-group">
+                                    <label for="hotkeyReset">Reset Timer</label>
+                                    <div class="hotkey-input">
+                                        <input type="text" id="hotkeyReset" readonly placeholder="Click to set hotkey">
+                                        <button class="btn btn-secondary btn-small" id="clearReset">Clear</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h3>Application</h3>
+                                <div class="setting-group">
+                                    <label for="hotkeySettings">Open Settings</label>
+                                    <div class="hotkey-input">
+                                        <input type="text" id="hotkeySettings" readonly
+                                            placeholder="Click to set hotkey">
+                                        <button class="btn btn-secondary btn-small" id="clearSettings">Clear</button>
+                                    </div>
+                                </div>
+
+                                <div class="setting-group">
+                                    <label for="hotkeyAddGoal">Add Goal</label>
+                                    <div class="hotkey-input">
+                                        <input type="text" id="hotkeyAddGoal" readonly
+                                            placeholder="Click to set hotkey">
+                                        <button class="btn btn-secondary btn-small" id="clearAddGoal">Clear</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="restoreDefaults">Restore Defaults</button>
+                    <button class="btn btn-primary" id="saveSettings">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="goals-section">
+            <div class="goals-header">
+                <h3>Session Goals</h3>
+                <button class="btn-add-goal" id="addGoalBtn">+ Add Goal</button>
+            </div>
+            <div class="goals-list" id="goalsList">
+                <div class="no-goals-message" id="noGoalsMessage">
+                    <span>Add goals to focus on during your Pomodoro sessions</span>
+                </div>
+            </div>
+            <div class="add-goal-form" id="addGoalForm" style="display: none;">
+                <input type="text" id="goalInput" placeholder="Enter your goal..." maxlength="100">
+                <div class="form-buttons">
+                    <button class="btn btn-primary btn-small" id="saveGoalBtn">Save</button>
+                    <button class="btn btn-secondary btn-small" id="cancelGoalBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <div class="stat-item">
+                <div class="stat-value" id="completedSessions">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalTime">00:00</div>
+                <div class="stat-label">Total Time</div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            <div class="copyright-text">© 2025 AnotherByte. All rights reserved.</div>
+        </footer>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>
