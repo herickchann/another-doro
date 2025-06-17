@@ -30,12 +30,12 @@ The build script automatically:
 1. **Syncs web assets** - Copies `index.html`, `styles.css`, and `assets/` to the `www/` directory
 2. **Syncs Capacitor** - Updates the Android project with latest web assets
 3. **Builds APK** - Compiles the Android application
-4. **Copies APK** - Places the final APK in the project root with a clean name
+4. **Moves APK to dist** - Places the final APK in the `dist/` folder with a clean name
 
 ## Output Files
 
-- **Debug build**: `AnotherDoro-1.0.0-debug.apk` (~4-5 MB)
-- **Release build**: `AnotherDoro-1.0.0-release.apk` (~4-5 MB)
+- **Debug build**: `dist/AnotherDoro-1.0.0-debug.apk` (~4-5 MB)
+- **Release build**: `dist/AnotherDoro-1.0.0-release.apk` (~4-5 MB)
 
 ## Installing the APK
 
@@ -46,7 +46,7 @@ The build script automatically:
 
 ### Using ADB:
 ```bash
-adb install AnotherDoro-1.0.0-debug.apk
+adb install dist/AnotherDoro-1.0.0-debug.apk
 ```
 
 ## Troubleshooting
@@ -92,7 +92,7 @@ keytool -genkey -v -keystore my-release-key.keystore -keyalg RSA -keysize 2048 -
 
 ### Sign the APK:
 ```bash
-jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore my-release-key.keystore AnotherDoro-1.0.0-release.apk my-key-alias
+jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore my-release-key.keystore dist/AnotherDoro-1.0.0-release.apk my-key-alias
 ```
 
 ## Build Times

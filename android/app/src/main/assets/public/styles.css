@@ -980,10 +980,24 @@ input:checked+.slider:before {
     border-top: 1px solid var(--surface-border);
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 12px;
     flex-shrink: 0;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 0 0 16px 16px;
+}
+
+.version-info {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.footer-buttons {
+    display: flex;
+    gap: 12px;
 }
 
 .modal-footer .btn {
@@ -991,6 +1005,7 @@ input:checked+.slider:before {
     padding: 10px 16px;
     font-size: 14px;
     font-weight: 500;
+    min-width: 120px;
 }
 
 /* Loading Screen */

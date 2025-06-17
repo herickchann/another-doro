@@ -63,8 +63,14 @@ try {
 
     console.log('   ✅ Android APK built\n');
 
-    // Step 4: Find and copy APK
-    console.log('📋 Step 4: Locating APK...');
+    // Step 4: Find and copy APK to dist folder
+    console.log('📋 Step 4: Locating and moving APK to dist folder...');
+
+    // Ensure dist directory exists
+    if (!fs.existsSync('dist')) {
+        fs.mkdirSync('dist', { recursive: true });
+        console.log('   📁 Created dist directory');
+    }
 
     const apkDir = isRelease
         ? 'android/app/build/outputs/apk/release'
@@ -80,20 +86,20 @@ try {
 
         if (apkFile) {
             const sourcePath = path.join(apkDir, apkFile);
-            const destPath = `AnotherDoro-1.0.0-${buildType}.apk`;
+            const destPath = path.join('dist', `AnotherDoro-1.0.0-${buildType}.apk`);
 
-            // Copy APK to root directory
+            // Copy APK to dist directory
             fs.copyFileSync(sourcePath, destPath);
 
             // Get file size
             const stats = fs.statSync(destPath);
             const fileSizeInMB = (stats.size / (1024 * 1024)).toFixed(1);
 
-            console.log(`   ✅ APK copied to: ${destPath}`);
+            console.log(`   ✅ APK moved to: ${destPath}`);
             console.log(`   📦 Size: ${fileSizeInMB} MB\n`);
 
             console.log('🎉 Android build completed successfully!');
-            console.log(`📱 APK ready: ${destPath}`);
+            console.log(`📱 APK ready in dist folder: ${destPath}`);
 
             if (isRelease) {
                 console.log('\n⚠️  Note: Release APK needs to be signed for distribution');
