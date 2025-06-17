@@ -285,15 +285,15 @@ class PomodoroTimer {
             // Add animation class
             this.timeDisplay.classList.add('changing');
 
-            // Update the text after a brief delay to sync with animation
+            // Update the text at the peak of the scale animation
             setTimeout(() => {
                 this.timeDisplay.textContent = newTime;
-            }, 100); // Quarter of the animation duration for smooth text change
+            }, 150); // Half of the animation duration for smooth text change
 
             // Remove animation class after animation completes
             setTimeout(() => {
                 this.timeDisplay.classList.remove('changing');
-            }, 400);
+            }, 300);
         }
     }
 
