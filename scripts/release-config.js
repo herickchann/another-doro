@@ -40,12 +40,7 @@ class ReleaseConfig {
         }
 
         // Fallback to default notes
-        return `## ✨ What's New
-- 🚀 Auto-update functionality for seamless updates
-- 🔄 Cross-platform synchronization
-- 🎨 Enhanced user interface
-- 🐛 Bug fixes and performance improvements
-- 📊 Better session tracking and statistics`;
+        return ``;
     }
 
     /**
@@ -54,17 +49,8 @@ class ReleaseConfig {
     getReleaseBody() {
         const customNotes = this.getCustomReleaseNotes();
 
-        return `## 🍅 AnotherDoro v${this.version}
-
-### 📱 Multi-Platform Release
-This release includes builds for both desktop and mobile platforms:
-
-- **🖥️ Desktop (macOS):** Download the \`.dmg\` file below
-- **📱 Android:** Download the \`.apk\` file below
-
-${customNotes}
-
-### 🔧 Installation Instructions
+        return `
+## 🔧 Installation Instructions
 
 **For macOS:**
 1. Download the \`.dmg\` file
@@ -77,8 +63,7 @@ ${customNotes}
 3. Install the APK file
 4. Launch AnotherDoro from your app drawer
 
-### 🔄 Auto-Updates
-Desktop versions now support automatic updates! The app will notify you when new versions are available.`;
+${customNotes}`;
     }
 
     /**
