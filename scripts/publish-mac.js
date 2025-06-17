@@ -29,16 +29,24 @@ async function publishMacOS() {
 
         // Find the macOS files in version directory
         const dmgPath = path.join(versionDir, `AnotherDoro-${version}-arm64.dmg`);
+        const dmgBlockmapPath = path.join(versionDir, `AnotherDoro-${version}-arm64.dmg.blockmap`);
         const zipPath = path.join(versionDir, `AnotherDoro-${version}-arm64-mac.zip`);
+        const zipBlockmapPath = path.join(versionDir, `AnotherDoro-${version}-arm64-mac.zip.blockmap`);
         const ymlPath = path.join(versionDir, 'latest-mac.yml');
 
         // Check if files exist
         const filesToUpload = [];
         if (fs.existsSync(dmgPath)) {
-            filesToUpload.push({ path: dmgPath, name: `AnotherDoro-v${version}-mac.dmg`, contentType: 'application/octet-stream' });
+            filesToUpload.push({ path: dmgPath, name: `AnotherDoro-${version}-arm64.dmg`, contentType: 'application/octet-stream' });
+        }
+        if (fs.existsSync(dmgBlockmapPath)) {
+            filesToUpload.push({ path: dmgBlockmapPath, name: `AnotherDoro-${version}-arm64.dmg.blockmap`, contentType: 'application/octet-stream' });
         }
         if (fs.existsSync(zipPath)) {
-            filesToUpload.push({ path: zipPath, name: `AnotherDoro-v${version}-mac.zip`, contentType: 'application/zip' });
+            filesToUpload.push({ path: zipPath, name: `AnotherDoro-${version}-arm64-mac.zip`, contentType: 'application/zip' });
+        }
+        if (fs.existsSync(zipBlockmapPath)) {
+            filesToUpload.push({ path: zipBlockmapPath, name: `AnotherDoro-${version}-arm64-mac.zip.blockmap`, contentType: 'application/octet-stream' });
         }
         if (fs.existsSync(ymlPath)) {
             filesToUpload.push({ path: ymlPath, name: 'latest-mac.yml', contentType: 'text/yaml' });
@@ -112,7 +120,7 @@ Desktop versions now support automatic updates! The app will notify you when new
 
         // Remove existing macOS assets
         for (const asset of release.assets) {
-            if (asset.name.includes('.dmg') || asset.name.includes('-mac.zip') || asset.name.includes('latest-mac.yml')) {
+            if (asset.name.includes('.dmg') || asset.name.includes('-mac.zip') || asset.name.includes('latest-mac.yml') || asset.name.includes('.blockmap')) {
                 console.log(`🗑️ Removing existing macOS asset: ${asset.name}`);
                 await octokit.rest.repos.deleteReleaseAsset({
                     owner,

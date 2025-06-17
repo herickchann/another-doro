@@ -20,14 +20,13 @@
     "version:major": "node scripts/increment-version.js major",
     "version:show": "node scripts/increment-version.js show",
     "preversion": "npm run version:show",
-    "publish": "electron-builder --publish=always",
     "publish:mac": "node scripts/publish-mac.js",
+    "publish:android": "node scripts/publish-android.js",
     "publish:patch": "node scripts/publish-with-version.js patch",
     "publish:minor": "node scripts/publish-with-version.js minor",
     "publish:major": "node scripts/publish-with-version.js major",
+    "publish:now": "node scripts/publish-with-version.js patch",
     "publish:all": "npm run build:all && npm run publish:mac && npm run publish:android",
-    "publish:now": "npm run build:all && npm run publish:mac && npm run publish:android",
-    "publish:android": "node scripts/publish-android.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

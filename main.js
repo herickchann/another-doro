@@ -274,6 +274,14 @@ app.whenReady().then(() => {
     createTray();
     configureAutoUpdater();
 
+    // Check for updates on startup (after a delay to let the app fully load)
+    setTimeout(() => {
+        if (process.env.NODE_ENV !== 'development' && app.isPackaged) {
+            console.log('Checking for updates on startup...');
+            autoUpdater.checkForUpdatesAndNotify();
+        }
+    }, 5000); // Wait 5 seconds after app starts
+
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();

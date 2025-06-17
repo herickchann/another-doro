@@ -87,13 +87,8 @@ class PublishManager {
     async pushChanges(version) {
         console.log('\n⬆️ Pushing changes to remote...');
 
-        // Push commits
-        let success = this.executeCommand('git push origin main', 'Pushing commits');
-
-        if (success) {
-            // Push tags
-            success = this.executeCommand(`git push origin v${version}`, 'Pushing tag');
-        }
+        // Push commits and tags together
+        const success = this.executeCommand('git push origin main --tags', 'Pushing commits and tags');
 
         if (success) {
             console.log('✅ Successfully pushed changes and tags');
@@ -148,7 +143,7 @@ class PublishManager {
             }
 
             // Publish desktop version
-            const publishDesktopSuccess = this.executeCommand('npm run publish', 'Publishing desktop version');
+            const publishDesktopSuccess = this.executeCommand('npm run publish:mac', 'Publishing desktop version');
             if (!publishDesktopSuccess) {
                 console.error('❌ Desktop publish failed');
             }

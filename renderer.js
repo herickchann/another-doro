@@ -1073,6 +1073,19 @@ class PomodoroTimer {
         this.dismissUpdateBtn = document.getElementById('dismissUpdateBtn');
         this.installUpdateBtn = document.getElementById('installUpdateBtn');
 
+        // Update popup modal elements
+        this.updateModal = document.getElementById('updateModal');
+        this.closeUpdateBtn = document.getElementById('closeUpdateBtn');
+        this.currentVersionPopup = document.getElementById('currentVersionPopup');
+        this.newVersionPopup = document.getElementById('newVersionPopup');
+        this.updateDescription = document.getElementById('updateDescription');
+        this.updatePopupProgress = document.getElementById('updatePopupProgress');
+        this.updatePopupProgressFill = document.getElementById('updatePopupProgressFill');
+        this.updatePopupProgressText = document.getElementById('updatePopupProgressText');
+        this.cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
+        this.downloadUpdatePopupBtn = document.getElementById('downloadUpdatePopupBtn');
+        this.installUpdatePopupBtn = document.getElementById('installUpdatePopupBtn');
+
         // Updates tab elements
         this.currentVersionElement = document.getElementById('currentVersion');
         this.checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
@@ -1091,6 +1104,23 @@ class PomodoroTimer {
 
         if (this.installUpdateBtn) {
             this.installUpdateBtn.addEventListener('click', () => this.installUpdate());
+        }
+
+        // Update popup event listeners
+        if (this.closeUpdateBtn) {
+            this.closeUpdateBtn.addEventListener('click', () => this.closeUpdatePopup());
+        }
+
+        if (this.cancelUpdateBtn) {
+            this.cancelUpdateBtn.addEventListener('click', () => this.closeUpdatePopup());
+        }
+
+        if (this.downloadUpdatePopupBtn) {
+            this.downloadUpdatePopupBtn.addEventListener('click', () => this.downloadUpdateFromPopup());
+        }
+
+        if (this.installUpdatePopupBtn) {
+            this.installUpdatePopupBtn.addEventListener('click', () => this.installUpdate());
         }
 
         if (this.checkUpdatesBtn) {
@@ -1211,7 +1241,7 @@ class PomodoroTimer {
 
             case 'available':
                 this.showUpdateStatus('available', `Update available: v${data.version}`);
-                this.showUpdateBanner('Update Available', `Version ${data.version} is ready to download`);
+                this.showUpdatePopup(data);
                 this.showUpdateInfo(data);
                 break;
 
@@ -1226,11 +1256,12 @@ class PomodoroTimer {
             case 'downloading':
                 this.showUpdateStatus('downloading', `Downloading... ${Math.round(data.percent)}%`);
                 this.showUpdateProgress(data.percent, `Downloading update... ${Math.round(data.percent)}%`);
+                this.updatePopupProgress(data.percent);
                 break;
 
             case 'downloaded':
                 this.showUpdateStatus('available', 'Update ready to install');
-                this.showUpdateBanner('Update Ready', 'The update has been downloaded and is ready to install');
+                this.updatePopupDownloadComplete();
                 this.hideUpdateProgress();
                 if (this.downloadUpdateBtn) this.downloadUpdateBtn.style.display = 'none';
                 if (this.installNowBtn) this.installNowBtn.style.display = 'inline-block';
@@ -1288,6 +1319,122 @@ class PomodoroTimer {
         }
 
         if (this.downloadUpdateBtn) this.downloadUpdateBtn.style.display = 'inline-block';
+    }
+
+    // Update popup functions
+    async showUpdatePopup(updateInfo) {
+        if (!this.updateModal) return;
+
+        // Load current version
+        try {
+            const currentVersion = await ipcRenderer.invoke('get-app-version');
+            if (this.currentVersionPopup) {
+                this.currentVersionPopup.textContent = currentVersion;
+            }
+        } catch (error) {
+            console.error('Failed to get current version:', error);
+        }
+
+        // Set new version
+        if (this.newVersionPopup && updateInfo.version) {
+            this.newVersionPopup.textContent = updateInfo.version;
+        }
+
+        // Set description
+        if (this.updateDescription) {
+            this.updateDescription.textContent = 'A new version of AnotherDoro is available with improvements and bug fixes.';
+        }
+
+        // Reset popup state
+        this.resetPopupState();
+
+        // Show the modal
+        this.updateModal.style.display = 'flex';
+    }
+
+    closeUpdatePopup() {
+        if (this.updateModal) {
+            this.updateModal.style.display = 'none';
+        }
+    }
+
+    async downloadUpdateFromPopup() {
+        if (!ipcRenderer) return;
+
+        // Show progress and disable download button
+        if (this.updatePopupProgress) {
+            this.updatePopupProgress.style.display = 'block';
+        }
+        if (this.downloadUpdatePopupBtn) {
+            this.downloadUpdatePopupBtn.disabled = true;
+            this.downloadUpdatePopupBtn.textContent = 'Downloading...';
+        }
+
+        try {
+            const result = await ipcRenderer.invoke('download-update');
+            if (result.error) {
+                this.showUpdateStatus('error', `Download failed: ${result.error}`);
+                this.resetPopupState();
+            }
+        } catch (error) {
+            console.error('Failed to download update:', error);
+            this.showUpdateStatus('error', 'Failed to download update');
+            this.resetPopupState();
+        }
+    }
+
+    updatePopupProgress(percent) {
+        if (this.updatePopupProgressFill) {
+            this.updatePopupProgressFill.style.width = `${percent}%`;
+        }
+        if (this.updatePopupProgressText) {
+            this.updatePopupProgressText.textContent = `Downloading update... ${Math.round(percent)}%`;
+        }
+    }
+
+    updatePopupDownloadComplete() {
+        // Hide progress
+        if (this.updatePopupProgress) {
+            this.updatePopupProgress.style.display = 'none';
+        }
+
+        // Update description
+        if (this.updateDescription) {
+            this.updateDescription.textContent = 'The update has been downloaded and is ready to install. The app will restart to complete the installation.';
+        }
+
+        // Show install button, hide download button
+        if (this.downloadUpdatePopupBtn) {
+            this.downloadUpdatePopupBtn.style.display = 'none';
+        }
+        if (this.installUpdatePopupBtn) {
+            this.installUpdatePopupBtn.style.display = 'inline-block';
+        }
+    }
+
+    resetPopupState() {
+        // Hide progress
+        if (this.updatePopupProgress) {
+            this.updatePopupProgress.style.display = 'none';
+        }
+
+        // Reset buttons
+        if (this.downloadUpdatePopupBtn) {
+            this.downloadUpdatePopupBtn.disabled = false;
+            this.downloadUpdatePopupBtn.textContent = 'Download & Install';
+            this.downloadUpdatePopupBtn.style.display = 'inline-block';
+        }
+        if (this.installUpdatePopupBtn) {
+            this.installUpdatePopupBtn.style.display = 'none';
+        }
+
+        // Reset progress
+        if (this.updatePopupProgressFill) {
+            this.updatePopupProgressFill.style.width = '0%';
+        }
+        if (this.updatePopupProgressText) {
+            this.updatePopupProgressText.textContent = 'Downloading update...';
+        }
     }
 }
 
