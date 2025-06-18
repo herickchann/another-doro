@@ -375,7 +375,11 @@ class PomodoroApp {
     handleUpdateStatus(status, data) {
         // Handle update status changes
         console.log('Update status:', status, data);
-        // Implementation would go here for update UI
+
+        // Forward to settings modal if it exists and is open
+        if (this.settingsModal) {
+            this.settingsModal.handleUpdateStatus(status, data);
+        }
     }
 
     // Theme management (delegated to ThemeManager)

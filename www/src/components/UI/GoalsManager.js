@@ -262,6 +262,7 @@ export class GoalsManager {
     updateDisplay() {
         const goalsList = getElementById(DOM_IDS.GOALS_LIST);
         const noGoalsMessage = getElementById(DOM_IDS.NO_GOALS_MESSAGE);
+        const goalsHeader = document.querySelector('.goals-header');
 
         if (!goalsList) return;
 
@@ -269,10 +270,16 @@ export class GoalsManager {
         goalsList.innerHTML = '';
 
         if (this.goals.length === 0) {
-            if (noGoalsMessage) {
-                noGoalsMessage.style.display = 'block';
+            // Hide only the goals list when there are no goals
+            if (goalsList) {
+                goalsList.style.display = 'none';
             }
         } else {
+            // Show the goals list when there are goals
+            if (goalsList) {
+                goalsList.style.display = 'block';
+            }
+
             if (noGoalsMessage) {
                 noGoalsMessage.style.display = 'none';
             }
@@ -294,7 +301,7 @@ export class GoalsManager {
             });
         }
 
-        // Always add the "Add Goal" button at the bottom of the goals section (not inside the scrollable list)
+        // Always add the "Add Goal" button at the bottom of the goals section
         this.addAddGoalButton();
     }
 
@@ -332,6 +339,8 @@ export class GoalsManager {
         // Insert the button right before the add-goal-form
         goalsSection.insertBefore(addGoalButton, addGoalForm);
     }
+
+
 
     getHotkeyHint() {
         // First check our stored hotkey

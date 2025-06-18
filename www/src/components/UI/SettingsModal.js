@@ -433,14 +433,174 @@ export class SettingsModal {
     }
 
     async checkForUpdates() {
-        if (Environment.canAutoUpdate()) {
-            try {
-                await Environment.invokeIPC('check-for-updates-manual');
-            } catch (error) {
-                console.error('Failed to check for updates:', error);
+        if (!Environment.canAutoUpdate()) {
+            this.showUpdateStatus('error', 'Updates not available in development mode');
+            return;
+        }
+
+        const button = document.getElementById('checkUpdatesBtn');
+        const statusElement = document.getElementById('updateStatus');
+        const originalText = button.textContent;
+
+        try {
+            // Show loading state
+            button.textContent = 'Checking...';
+            button.disabled = true;
+            this.showUpdateStatus('checking', 'Checking for updates...');
+            this.hideProgressSection();
+
+            const result = await Environment.invokeIPC('check-for-updates-manual');
+
+            if (result.error) {
+                this.showUpdateStatus('error', `Update check failed: ${result.error}`);
+            } else if (result.available) {
+                this.showUpdateStatus('available', `Update available: v${result.version}`);
+                this.showUpdateInfo(result.version, result.releaseNotes || 'New version available with improvements and bug fixes.');
+            } else {
+                this.showUpdateStatus('not-available', result.message || 'You have the latest version');
             }
-        } else {
-            alert('Updates not available in this environment');
+        } catch (error) {
+            console.error('Failed to check for updates:', error);
+            this.showUpdateStatus('error', `Failed to check for updates: ${error.message}`);
+        } finally {
+            // Restore button state
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    }
+
+    showUpdateStatus(type, message) {
+        const statusElement = document.getElementById('updateStatus');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `update-status ${type}`;
+        }
+    }
+
+    showUpdateInfo(version, releaseNotes) {
+        const infoSection = document.getElementById('updateInfoSection');
+        const versionElement = document.getElementById('newVersion');
+        const notesElement = document.getElementById('updateReleaseNotes');
+        const downloadBtn = document.getElementById('downloadUpdateBtn');
+
+        if (versionElement) versionElement.textContent = version;
+        if (notesElement) notesElement.textContent = releaseNotes;
+        if (downloadBtn) {
+            downloadBtn.style.display = 'inline-block';
+            downloadBtn.onclick = () => this.downloadUpdate();
+        }
+        if (infoSection) infoSection.style.display = 'block';
+    }
+
+    async downloadUpdate() {
+        const downloadBtn = document.getElementById('downloadUpdateBtn');
+        const installBtn = document.getElementById('installNowBtn');
+
+        try {
+            downloadBtn.textContent = 'Downloading...';
+            downloadBtn.disabled = true;
+            this.showProgressSection();
+            this.updateProgress(0, 'Preparing download...');
+
+            const result = await Environment.invokeIPC('download-update');
+
+            if (result.success) {
+                this.hideProgressSection();
+                this.showUpdateStatus('ready', 'Update ready to install');
+                downloadBtn.style.display = 'none';
+                if (installBtn) {
+                    installBtn.style.display = 'inline-block';
+                    installBtn.onclick = () => this.installUpdate();
+                }
+            } else {
+                this.hideProgressSection();
+                this.showUpdateStatus('error', result.error || 'Download failed');
+                downloadBtn.textContent = 'Download Update';
+                downloadBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Download failed:', error);
+            this.hideProgressSection();
+            this.showUpdateStatus('error', `Download failed: ${error.message}`);
+            downloadBtn.textContent = 'Download Update';
+            downloadBtn.disabled = false;
+        }
+    }
+
+    async installUpdate() {
+        try {
+            this.showUpdateStatus('installing', 'Installing update...');
+            await Environment.invokeIPC('install-update');
+        } catch (error) {
+            console.error('Install failed:', error);
+            this.showUpdateStatus('error', `Install failed: ${error.message}`);
+        }
+    }
+
+    showProgressSection() {
+        const progressSection = document.getElementById('updateProgressSection');
+        if (progressSection) {
+            progressSection.style.display = 'block';
+        }
+    }
+
+    hideProgressSection() {
+        const progressSection = document.getElementById('updateProgressSection');
+        if (progressSection) {
+            progressSection.style.display = 'none';
+        }
+    }
+
+    updateProgress(percentage, text) {
+        const progressFill = document.getElementById('settingsProgressFill');
+        const progressText = document.getElementById('settingsProgressText');
+        const progressPercent = document.getElementById('settingsProgressPercent');
+
+        if (progressFill) {
+            progressFill.style.width = `${Math.min(100, Math.max(0, percentage))}%`;
+        }
+        if (progressText) {
+            progressText.textContent = text || 'Downloading...';
+        }
+        if (progressPercent) {
+            progressPercent.textContent = `${Math.round(percentage)}%`;
+        }
+    }
+
+    // Method to handle update status from main process
+    handleUpdateStatus(status, data) {
+        console.log('Settings modal handling update status:', status, data);
+
+        switch (status) {
+            case 'checking':
+                this.showUpdateStatus('checking', 'Checking for updates...');
+                break;
+            case 'available':
+                this.showUpdateStatus('available', `Update available: v${data.version}`);
+                this.showUpdateInfo(data.version, data.releaseNotes || 'New version available with improvements and bug fixes.');
+                break;
+            case 'not-available':
+                this.showUpdateStatus('not-available', 'You have the latest version');
+                break;
+            case 'downloading':
+                this.showProgressSection();
+                this.updateProgress(data.percent || 0, `Downloading... ${Math.round(data.percent || 0)}%`);
+                break;
+            case 'downloaded':
+                this.hideProgressSection();
+                this.showUpdateStatus('ready', 'Update ready to install');
+                const downloadBtn = document.getElementById('downloadUpdateBtn');
+                const installBtn = document.getElementById('installNowBtn');
+                if (downloadBtn) downloadBtn.style.display = 'none';
+                if (installBtn) {
+                    installBtn.style.display = 'inline-block';
+                    installBtn.onclick = () => this.installUpdate();
+                }
+                break;
+            case 'error':
+                this.hideProgressSection();
+                this.showUpdateStatus('error', data || 'Update error occurred');
+                break;
         }
     }
 } 

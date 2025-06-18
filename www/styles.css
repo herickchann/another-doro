@@ -706,9 +706,9 @@ input:checked+.slider:before {
     white-space: pre-wrap;
     transition: all 0.2s ease;
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 8px;
     border-radius: 4px;
-    margin: -4px -8px;
+    margin: -8px;
 }
 
 .goal-text:hover {
@@ -727,12 +727,18 @@ input:checked+.slider:before {
     font-size: 14px !important;
     font-family: inherit !important;
     line-height: 1.4 !important;
-    resize: vertical !important;
+    resize: none !important;
     min-height: 32px !important;
     outline: none !important;
     box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2) !important;
     -webkit-app-region: no-drag !important;
     transition: all 0.2s ease !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+}
+
+.goal-edit-input::-webkit-scrollbar {
+    display: none !important;
 }
 
 .goal-edit-input:focus {
@@ -820,7 +826,7 @@ input:checked+.slider:before {
     background: var(--surface-color);
     border: 1px solid var(--surface-border);
     border-radius: 8px;
-    padding: 12px;
+    padding: 8px;
     color: var(--text-primary);
     font-size: 14px;
     margin-bottom: 12px;
@@ -828,9 +834,15 @@ input:checked+.slider:before {
     transition: all 0.2s ease;
     font-family: inherit;
     -webkit-app-region: no-drag;
-    resize: vertical;
+    resize: none;
     min-height: 80px;
     line-height: 1.4;
+    overflow: hidden;
+    scrollbar-width: none;
+}
+
+.add-goal-form textarea::-webkit-scrollbar {
+    display: none;
 }
 
 .add-goal-form textarea:focus {
@@ -894,6 +906,8 @@ input:checked+.slider:before {
 .add-goal-text {
     font-weight: 500;
 }
+
+
 
 .add-goal-hotkey {
     font-size: 11px;
@@ -1762,6 +1776,53 @@ input:checked+.slider:before {
     min-width: 120px;
 }
 
+/* Update Progress Section in Settings */
+.update-progress-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.update-progress-section .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.update-progress-section .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.update-progress-section .progress-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.update-progress-section .progress-percentage {
+    font-size: 14px;
+    color: var(--primary-color);
+    font-weight: 600;
+    min-width: 40px;
+    text-align: right;
+}
+
 /* Update body padding when banner is visible */
 body.update-banner-visible {
     padding-top: 60px;
@@ -1783,118 +1844,7 @@ body.update-banner-visible {
     flex-shrink: 0;
 }
 
-/* Update Popup Modal Styles */
-.update-modal {
-    max-width: 480px;
-    width: 90%;
-}
 
-.update-popup-content {
-    padding: 8px 0;
-}
-
-.update-version-info {
-    margin-bottom: 20px;
-}
-
-.version-comparison {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    background: var(--surface-color);
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
-}
-
-.version-arrow {
-    font-size: 18px;
-    color: var(--primary-color);
-    font-weight: bold;
-    margin: 0 10px;
-}
-
-.current-version-info,
-.new-version-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.version-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.version-number {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.version-number.new-version {
-    color: var(--success-color);
-}
-
-.update-description {
-    margin-bottom: 20px;
-}
-
-.update-description h4 {
-    font-size: 14px;
-    color: var(--text-primary);
-    margin: 0 0 8px 0;
-    font-weight: 600;
-}
-
-.release-notes {
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.update-popup-progress {
-    margin-top: 20px;
-    animation: slideDown 0.3s ease-out;
-}
-
-.update-popup-progress .progress-bar {
-    width: 100%;
-    height: 6px;
-    background: var(--surface-color);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 12px;
-}
-
-.update-popup-progress .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-    border-radius: 3px;
-    transition: width 0.3s ease;
-    width: 0%;
-}
-
-.update-popup-progress .progress-text {
-    font-size: 13px;
-    text-align: center;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-}
-
-.progress-percentage {
-    font-size: 12px;
-    text-align: center;
-    color: var(--primary-color);
-    font-weight: 600;
-}
 
 .volume-slider {
     flex: 1;

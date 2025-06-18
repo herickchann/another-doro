@@ -93,11 +93,11 @@
 
         <main class="timer-section">
             <div class="timer-circle">
-                <svg class="progress-ring" width="250" height="250">
+                <svg class="progress-ring" width="300" height="300">
                     <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent"
-                        r="117" cx="125" cy="125" />
-                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="117"
-                        cx="125" cy="125" id="progressCircle" />
+                        r="140" cx="150" cy="150" />
+                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="140"
+                        cx="150" cy="150" id="progressCircle" />
                 </svg>
                 <div class="timer-display">
                     <div class="time" id="timeDisplay">25:00</div>
@@ -123,53 +123,7 @@
             </div>
         </main>
 
-        <!-- Update Popup Modal -->
-        <div class="modal-overlay" id="updateModal" style="display: none;">
-            <div class="modal update-modal">
-                <div class="modal-header">
-                    <h2>🚀 Update Available</h2>
-                    <button class="close-btn" id="closeUpdateBtn">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="update-popup-content">
-                        <div class="update-version-info">
-                            <div class="version-comparison">
-                                <div class="current-version-info">
-                                    <span class="version-label">Current Version</span>
-                                    <span class="version-number" id="currentVersionPopup">1.0.4</span>
-                                </div>
-                                <div class="version-arrow">→</div>
-                                <div class="new-version-info">
-                                    <span class="version-label">New Version</span>
-                                    <span class="version-number new-version" id="newVersionPopup">1.0.5</span>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="update-description" id="updateDescription">
-                            <h4>What's New:</h4>
-                            <div class="release-notes" id="releaseNotes">
-                                A new version of AnotherDoro is available with improvements and bug fixes.
-                            </div>
-                        </div>
-
-                        <div class="update-popup-progress" id="updatePopupProgress" style="display: none;">
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="updatePopupProgressFill"></div>
-                            </div>
-                            <div class="progress-text" id="updatePopupProgressText">Preparing download...</div>
-                            <div class="progress-percentage" id="updatePopupProgressPercent">0%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelUpdateBtn">Not Now</button>
-                    <button class="btn btn-secondary" id="downloadUpdatePopupBtn">Download Update</button>
-                    <button class="btn btn-primary" id="installUpdatePopupBtn" style="display: none;">Install &
-                        Restart</button>
-                </div>
-            </div>
-        </div>
 
         <!-- Settings Modal -->
         <div class="modal-overlay" id="settingsModal">
@@ -304,6 +258,19 @@
                                                 style="display: none;">Install Now</button>
                                         </div>
                                     </div>
+
+                                    <!-- Download Progress Section -->
+                                    <div class="update-progress-section" id="updateProgressSection"
+                                        style="display: none;">
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="settingsProgressFill"></div>
+                                        </div>
+                                        <div class="progress-info">
+                                            <div class="progress-text" id="settingsProgressText">Preparing download...
+                                            </div>
+                                            <div class="progress-percentage" id="settingsProgressPercent">0%</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -417,7 +384,7 @@
                 </div>
             </div>
             <div class="add-goal-form" id="addGoalForm" style="display: none;">
-                <input type="text" id="goalInput" placeholder="Enter your goal..." maxlength="100">
+                <textarea id="goalInput" placeholder="Enter your goal..." rows="3" maxlength="500"></textarea>
                 <div class="form-buttons">
                     <button class="btn btn-primary btn-small" id="saveGoalBtn">Save</button>
                     <button class="btn btn-secondary btn-small" id="cancelGoalBtn">Cancel</button>
