@@ -175,6 +175,7 @@ ios/App/Podfile.lock
 # Capacitor
 .capacitor/
 capacitor.config.json
+www/
 
 # Build artifacts
 *.apk

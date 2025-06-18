@@ -601,4 +601,12 @@ ipcMain.handle('get-platform-info', async () => {
         isElectron: true,
         version: app.getVersion()
     };
+});
+
+ipcMain.handle('set-tray-tooltip', async (event, tooltip) => {
+    if (tray && !tray.isDestroyed()) {
+        tray.setToolTip(tooltip);
+        return { success: true };
+    }
+    return { success: false, error: 'Tray not available' };
 }); 

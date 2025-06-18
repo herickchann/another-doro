@@ -2,6 +2,7 @@ import { Storage } from '../../utils/storage.js';
 import { NotificationService } from '../../services/NotificationService.js';
 import { AudioService } from '../../services/AudioService.js';
 import { Environment } from '../../utils/environment.js';
+import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
 
 export class SettingsModal {
     constructor(app) {
@@ -12,18 +13,18 @@ export class SettingsModal {
 
     setupEventListeners() {
         // Settings button
-        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsBtn = getElementById(DOM_IDS.SETTINGS_BTN);
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.open();
+            settingsBtn.addEventListener('click', async () => {
+                await this.open();
             });
         }
 
         // Settings modal controls
-        const settingsModal = document.getElementById('settingsModal');
-        const closeSettingsBtn = document.getElementById('closeSettings');
-        const saveSettingsBtn = document.getElementById('saveSettings');
-        const restoreDefaultsBtn = document.getElementById('restoreDefaults');
+        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
+        const closeSettingsBtn = getElementById(DOM_IDS.CLOSE_SETTINGS_BTN);
+        const saveSettingsBtn = getElementById(DOM_IDS.SAVE_SETTINGS_BTN);
+        const restoreDefaultsBtn = getElementById(DOM_IDS.RESTORE_DEFAULTS_BTN);
 
         if (closeSettingsBtn) {
             closeSettingsBtn.addEventListener('click', () => {
@@ -52,6 +53,14 @@ export class SettingsModal {
             });
         }
 
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) {
+                e.preventDefault();
+                this.close();
+            }
+        });
+
         // Settings tabs
         const tabButtons = document.querySelectorAll('.tab-button');
         tabButtons.forEach(button => {
@@ -61,18 +70,28 @@ export class SettingsModal {
         });
 
         // Volume slider
-        const volumeSlider = document.getElementById('volumeSlider');
-        const volumeValue = document.getElementById('volumeValue');
+        const volumeSlider = getElementById(DOM_IDS.VOLUME_SLIDER);
+        const volumeValue = getElementById(DOM_IDS.VOLUME_VALUE);
         if (volumeSlider && volumeValue) {
+            // Update volume slider visual
+            const updateSliderBackground = (value) => {
+                const percentage = value;
+                volumeSlider.style.background = `linear-gradient(to right, var(--primary-color) 0%, var(--primary-color) ${percentage}%, var(--surface-color) ${percentage}%, var(--surface-color) 100%)`;
+            };
+
+            // Initial update
+            updateSliderBackground(volumeSlider.value);
+
             volumeSlider.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
                 volumeValue.textContent = `${value}%`;
+                updateSliderBackground(value);
                 AudioService.setVolume(value / 100);
             });
         }
 
         // Test sound button
-        const testSoundBtn = document.getElementById('testSoundBtn');
+        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
         if (testSoundBtn) {
             testSoundBtn.addEventListener('click', () => {
                 AudioService.testSound();
@@ -80,7 +99,7 @@ export class SettingsModal {
         }
 
         // Clear sessions button
-        const clearSessionsBtn = document.getElementById('clearAllSessions');
+        const clearSessionsBtn = getElementById(DOM_IDS.CLEAR_ALL_SESSIONS);
         if (clearSessionsBtn) {
             clearSessionsBtn.addEventListener('click', () => {
                 this.clearAllSessions();
@@ -88,7 +107,7 @@ export class SettingsModal {
         }
 
         // Update check button
-        const checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
+        const checkUpdatesBtn = getElementById(DOM_IDS.CHECK_UPDATES_BTN);
         if (checkUpdatesBtn) {
             checkUpdatesBtn.addEventListener('click', () => {
                 this.checkForUpdates();
@@ -101,15 +120,15 @@ export class SettingsModal {
 
     setupHotkeyInputs() {
         const hotkeyInputs = [
-            { id: 'hotkeyStartPause', key: 'startPause', clearId: 'clearStartPause' },
-            { id: 'hotkeyReset', key: 'reset', clearId: 'clearReset' },
-            { id: 'hotkeySettings', key: 'settings', clearId: 'clearSettings' },
-            { id: 'hotkeyAddGoal', key: 'addGoal', clearId: 'clearAddGoal' }
+            { id: DOM_IDS.HOTKEY_START_PAUSE, key: 'startPause', clearId: DOM_IDS.CLEAR_START_PAUSE },
+            { id: DOM_IDS.HOTKEY_RESET, key: 'reset', clearId: DOM_IDS.CLEAR_RESET },
+            { id: DOM_IDS.HOTKEY_SETTINGS, key: 'settings', clearId: DOM_IDS.CLEAR_SETTINGS },
+            { id: DOM_IDS.HOTKEY_ADD_GOAL, key: 'addGoal', clearId: DOM_IDS.CLEAR_ADD_GOAL }
         ];
 
         hotkeyInputs.forEach(({ id, key, clearId }) => {
-            const input = document.getElementById(id);
-            const clearBtn = document.getElementById(clearId);
+            const input = getElementById(id);
+            const clearBtn = getElementById(clearId);
 
             if (input) {
                 input.addEventListener('click', () => {
@@ -127,7 +146,7 @@ export class SettingsModal {
 
     recordHotkey(input, key) {
         input.value = 'Press key combination...';
-        input.classList.add('recording');
+        input.classList.add(CSS_CLASSES.RECORDING);
 
         const recordKeydown = (e) => {
             e.preventDefault();
@@ -162,7 +181,7 @@ export class SettingsModal {
             const hotkeyString = modifiers.length > 0 ? `${modifiers.join('+')}+${keyName}` : keyName;
 
             input.value = hotkeyString;
-            input.classList.remove('recording');
+            input.classList.remove(CSS_CLASSES.RECORDING);
 
             // Update settings
             if (!this.app.currentSettings.hotkeys) {
@@ -178,8 +197,8 @@ export class SettingsModal {
         // Timeout after 10 seconds
         setTimeout(() => {
             document.removeEventListener('keydown', recordKeydown, true);
-            if (input.classList.contains('recording')) {
-                input.classList.remove('recording');
+            if (input.classList.contains(CSS_CLASSES.RECORDING)) {
+                input.classList.remove(CSS_CLASSES.RECORDING);
                 input.value = this.app.currentSettings.hotkeys?.[key] || '';
             }
         }, 10000);
@@ -192,71 +211,88 @@ export class SettingsModal {
         }
     }
 
-    open() {
-        const settingsModal = document.getElementById('settingsModal');
+    async open() {
+        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
         if (settingsModal) {
-            this.loadSettingsIntoForm();
+            await this.loadSettingsIntoForm();
             settingsModal.style.display = 'flex';
-            settingsModal.classList.add('show');
+            settingsModal.classList.add(CSS_CLASSES.SHOW);
             this.isOpen = true;
         }
     }
 
     close() {
-        const settingsModal = document.getElementById('settingsModal');
+        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
         if (settingsModal) {
             settingsModal.style.display = 'none';
-            settingsModal.classList.remove('show');
+            settingsModal.classList.remove(CSS_CLASSES.SHOW);
             this.isOpen = false;
         }
     }
 
-    loadSettingsIntoForm() {
+    async loadSettingsIntoForm() {
         const settings = this.app.currentSettings;
 
         // Timer settings
-        this.setInputValue('workDurationInput', settings.workDuration);
-        this.setInputValue('shortBreakDurationInput', settings.shortBreakDuration);
-        this.setInputValue('longBreakDurationInput', settings.longBreakDuration);
-        this.setCheckboxValue('autoBreak', settings.autoBreak);
-        this.setCheckboxValue('autoWork', settings.autoWork);
-        this.setSelectValue('themeSelector', settings.theme);
+        this.setInputValue(DOM_IDS.WORK_DURATION_INPUT, settings.workDuration);
+        this.setInputValue(DOM_IDS.SHORT_BREAK_DURATION_INPUT, settings.shortBreakDuration);
+        this.setInputValue(DOM_IDS.LONG_BREAK_DURATION_INPUT, settings.longBreakDuration);
+        this.setCheckboxValue(DOM_IDS.AUTO_BREAK, settings.autoBreak);
+        this.setCheckboxValue(DOM_IDS.AUTO_WORK, settings.autoWork);
+        this.setSelectValue(DOM_IDS.THEME_SELECTOR, settings.theme);
 
         // Audio settings
-        this.setCheckboxValue('soundEnabled', settings.soundEnabled);
-        this.setInputValue('volumeSlider', Math.round(settings.volume * 100));
-        this.setTextContent('volumeValue', `${Math.round(settings.volume * 100)}%`);
-        this.setSelectValue('soundSelector', settings.currentSound);
+        this.setCheckboxValue(DOM_IDS.SOUND_ENABLED, settings.soundEnabled);
+        const volumeValue = Math.round(settings.volume * 100);
+        this.setInputValue(DOM_IDS.VOLUME_SLIDER, volumeValue);
+        this.setTextContent(DOM_IDS.VOLUME_VALUE, `${volumeValue}%`);
+        this.setSelectValue(DOM_IDS.SOUND_SELECTOR, settings.currentSound);
+
+        // Update volume slider visual
+        const volumeSlider = getElementById(DOM_IDS.VOLUME_SLIDER);
+        if (volumeSlider) {
+            volumeSlider.style.background = `linear-gradient(to right, var(--primary-color) 0%, var(--primary-color) ${volumeValue}%, var(--surface-color) ${volumeValue}%, var(--surface-color) 100%)`;
+        }
 
         // Update settings
-        this.setCheckboxValue('autoUpdateCheck', settings.autoUpdateCheck);
-        this.setSelectValue('updateCheckInterval', settings.updateCheckInterval);
+        this.setCheckboxValue(DOM_IDS.AUTO_UPDATE_CHECK, settings.autoUpdateCheck);
+        this.setSelectValue(DOM_IDS.UPDATE_CHECK_INTERVAL, settings.updateCheckInterval);
+
+        // Load current version
+        try {
+            if (Environment.canAutoUpdate()) {
+                const currentVersion = await Environment.invokeIPC('get-app-version');
+                this.setTextContent(DOM_IDS.CURRENT_VERSION, currentVersion);
+            }
+        } catch (error) {
+            console.error('Failed to load current version:', error);
+        }
 
         // Hotkeys
         const hotkeys = settings.hotkeys || {};
-        this.setInputValue('hotkeyStartPause', hotkeys.startPause || '');
-        this.setInputValue('hotkeyReset', hotkeys.reset || '');
-        this.setInputValue('hotkeySettings', hotkeys.settings || '');
-        this.setInputValue('hotkeyAddGoal', hotkeys.addGoal || '');
+        this.setInputValue(DOM_IDS.HOTKEY_START_PAUSE, hotkeys.startPause || '');
+        this.setInputValue(DOM_IDS.HOTKEY_RESET, hotkeys.reset || '');
+        this.setInputValue(DOM_IDS.HOTKEY_SETTINGS, hotkeys.settings || '');
+        this.setInputValue(DOM_IDS.HOTKEY_ADD_GOAL, hotkeys.addGoal || '');
     }
 
     setInputValue(id, value) {
-        const element = document.getElementById(id);
+        const element = getElementById(id);
         if (element) element.value = value;
     }
 
     setCheckboxValue(id, value) {
-        const element = document.getElementById(id);
+        const element = getElementById(id);
         if (element) element.checked = value;
     }
 
     setSelectValue(id, value) {
-        const element = document.getElementById(id);
+        const element = getElementById(id);
         if (element) element.value = value;
     }
 
     setTextContent(id, value) {
-        const element = document.getElementById(id);
+        const element = getElementById(id);
         if (element) element.textContent = value;
     }
 
@@ -290,6 +326,16 @@ export class SettingsModal {
             // Update timer
             this.app.timer.updateSettings(this.app.currentSettings);
 
+            // Update hotkeys immediately - this is the key fix!
+            if (this.app.hotkeyManager) {
+                this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
+            }
+
+            // Update goals manager hotkey display
+            if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+            }
+
             // Apply theme
             this.app.applyTheme(this.app.currentSettings.theme);
 
@@ -317,11 +363,21 @@ export class SettingsModal {
                 // Update timer
                 this.app.timer.updateSettings(this.app.currentSettings);
 
+                // Update hotkeys immediately
+                if (this.app.hotkeyManager) {
+                    this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
+                }
+
+                // Update goals manager hotkey display
+                if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                    this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+                }
+
                 // Apply theme
                 this.app.applyTheme(this.app.currentSettings.theme);
 
                 // Reload form
-                this.loadSettingsIntoForm();
+                await this.loadSettingsIntoForm();
 
                 // Show notification
                 await NotificationService.showSettingsReset();

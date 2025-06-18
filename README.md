@@ -122,20 +122,29 @@ npx cap open android
 
 ## 📁 Project Structure
 
+AnotherDoro uses a **single-source architecture** to avoid code duplication:
+
 ```
 another-doro/
-├── assets/              # Icons, images, resources
+├── assets/              # Icons, images, resources  
+├── src/                 # Source components and utilities
+├── scripts/             # Build and utility scripts
 ├── android/             # Android/Capacitor project
 ├── dist/               # Build outputs (ignored by git)
-├── www/                # Web assets for mobile build
-├── index.html          # Main HTML file
-├── styles.css          # Application styles
-├── renderer.js         # Main application logic
+├── www/                # Generated for mobile builds (DO NOT EDIT)
+├── index.html          # Main HTML file (source of truth)
+├── styles.css          # Application styles (source of truth)
+├── renderer.js         # Main application logic (source of truth)
 ├── main.js             # Electron main process
-├── build-android.js    # Android build script
 ├── package.json        # Dependencies and scripts
 └── capacitor.config.ts # Capacitor configuration
 ```
+
+**Key Points:**
+- Source files live in the root directory
+- `www/` is automatically generated for mobile builds
+- Never manually edit files in `www/` - they will be overwritten
+- See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development workflow
 
 ## 🔧 Advanced Build Options
 

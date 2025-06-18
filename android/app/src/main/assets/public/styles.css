@@ -1,6 +1,7 @@
 :root {
     /* Default theme: Neon Vibes (Cyan/Purple) */
     --primary-color: #00d4ff;
+    --primary-color-rgb: 0, 212, 255;
     --secondary-color: #c77dff;
     --accent-color: #9d4edd;
     --background-gradient-start: #0d1b2a;
@@ -28,6 +29,7 @@
 /* Theme: Classic Red */
 [data-theme="classic"] {
     --primary-color: #ff6b6b;
+    --primary-color-rgb: 255, 107, 107;
     --secondary-color: #feca57;
     --accent-color: #ee5a52;
     --background-gradient-start: #1a1a1a;
@@ -49,6 +51,7 @@
 /* Theme: Forest Green */
 [data-theme="forest"] {
     --primary-color: #52b788;
+    --primary-color-rgb: 82, 183, 136;
     --secondary-color: #2d6a4f;
     --accent-color: #1b4332;
     --background-gradient-start: #081c15;
@@ -70,6 +73,7 @@
 /* Theme: Sunset Orange */
 [data-theme="sunset"] {
     --primary-color: #ff8500;
+    --primary-color-rgb: 255, 133, 0;
     --secondary-color: #ffb700;
     --accent-color: #fb8500;
     --background-gradient-start: #1a0f0a;
@@ -91,6 +95,7 @@
 /* Theme: Ocean Blue */
 [data-theme="ocean"] {
     --primary-color: #0077be;
+    --primary-color-rgb: 0, 119, 190;
     --secondary-color: #023e8a;
     --accent-color: #0353a4;
     --background-gradient-start: #03045e;
@@ -445,6 +450,25 @@ input[type="number"] {
     min-width: 80px;
 }
 
+/* Theme the number input spinner arrows - Clean approach */
+input[type="number"] {
+    -moz-appearance: textfield;
+    /* Firefox - removes default arrows */
+}
+
+/* Simply theme the existing webkit spinner buttons */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    opacity: 1;
+    height: 14px;
+    cursor: pointer;
+}
+
+input[type="number"]::-webkit-inner-spin-button:hover,
+input[type="number"]::-webkit-outer-spin-button:hover {
+    background: var(--primary-color);
+}
+
 /* Radio Groups */
 .radio-group {
     display: flex;
@@ -569,24 +593,7 @@ input:checked+.slider:before {
     transition: color 0.3s ease;
 }
 
-.btn-add-goal {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 12px;
-    color: #ffffff;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    backdrop-filter: blur(10px);
-    -webkit-app-region: no-drag;
-}
 
-.btn-add-goal:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-1px);
-}
 
 .goals-list {
     min-height: 60px;
@@ -734,6 +741,65 @@ input:checked+.slider:before {
     padding: 8px 16px;
     font-size: 12px;
     min-width: 60px;
+}
+
+/* Inline Add Goal Button */
+.btn-add-goal-inline {
+    width: 100%;
+    padding: 16px 12px;
+    margin-top: 8px;
+    background: transparent;
+    border: 2px dashed var(--surface-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    -webkit-app-region: no-drag;
+}
+
+.btn-add-goal-inline:hover {
+    border-color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.add-goal-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.btn-add-goal-inline:hover .add-goal-content {
+    color: var(--primary-color);
+}
+
+.add-goal-plus {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.add-goal-text {
+    font-weight: 500;
+}
+
+.add-goal-hotkey {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    margin-left: 4px;
+}
+
+.btn-add-goal-inline:hover .add-goal-hotkey {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 /* Stats Section */
@@ -1339,6 +1405,12 @@ input:checked+.slider:before {
     transition: all 0.2s ease;
 }
 
+.hotkey-input input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.8;
+    font-style: italic;
+}
+
 .hotkey-input input:focus {
     outline: none;
     border-color: var(--primary-color);
@@ -1374,13 +1446,14 @@ input:checked+.slider:before {
 
 /* Clear hotkey button styling */
 .btn-clear-hotkey {
-    width: 24px;
-    height: 24px;
+    width: 34px;
+    height: 34px;
+    /* Match the input field height */
     padding: 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 6px;
+    color: #ff4757;
     font-size: 16px;
     line-height: 1;
     cursor: pointer;
@@ -1392,14 +1465,15 @@ input:checked+.slider:before {
 }
 
 .btn-clear-hotkey:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 71, 87, 0.2);
+    border-color: rgba(255, 71, 87, 0.5);
+    color: #ff3742;
     transform: translateY(-1px);
 }
 
 .btn-clear-hotkey:active {
     transform: translateY(0);
+    background: rgba(255, 71, 87, 0.3);
 }
 
 /* Update UI Styles */

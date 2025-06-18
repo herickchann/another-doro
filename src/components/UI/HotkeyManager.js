@@ -12,6 +12,12 @@ export class HotkeyManager {
         this.hotkeys = { ...DEFAULT_HOTKEYS, ...hotkeys };
     }
 
+    // Update hotkeys immediately without requiring restart
+    updateHotkeys(newHotkeys = {}) {
+        this.hotkeys = { ...DEFAULT_HOTKEYS, ...newHotkeys };
+        console.log('Hotkeys updated:', this.hotkeys);
+    }
+
     setupEventListeners() {
         document.addEventListener('keydown', (e) => {
             this.handleKeyDown(e);
@@ -132,22 +138,24 @@ export class HotkeyManager {
         return false;
     }
 
-    getHotkey(action) {
-        return this.hotkeys[action];
-    }
-
     clearHotkey(action) {
-        delete this.hotkeys[action];
+        if (this.hotkeys[action]) {
+            this.hotkeys[action] = '';
+            return true;
+        }
+        return false;
     }
 
-    updateHotkeys(newHotkeys) {
-        this.hotkeys = { ...this.hotkeys, ...newHotkeys };
+    getHotkey(action) {
+        return this.hotkeys[action] || '';
     }
 
-    // Validation
+    getAllHotkeys() {
+        return { ...this.hotkeys };
+    }
+
     isValidKeyString(keyString) {
-        // Basic validation - not empty and follows expected format
-        return typeof keyString === 'string' && keyString.trim().length > 0;
+        return typeof keyString === 'string' && keyString.length > 0;
     }
 
     isHotkeyInUse(keyString, excludeAction = null) {
@@ -159,17 +167,13 @@ export class HotkeyManager {
         return false;
     }
 
-    // Enable/disable
+    // Enable/disable hotkeys
     enable() {
         this.isEnabled = true;
     }
 
     disable() {
         this.isEnabled = false;
-    }
-
-    toggle() {
-        this.isEnabled = !this.isEnabled;
     }
 
     isHotkeyEnabled() {
@@ -194,10 +198,7 @@ export class HotkeyManager {
             .replace('Tab', '⇥');
     }
 
-    getAllHotkeys() {
-        return { ...this.hotkeys };
-    }
-
+    // Debug and monitoring
     getRegisteredActions() {
         return Array.from(this.actions.keys());
     }
@@ -229,7 +230,7 @@ export class HotkeyManager {
     // Export/Import
     exportHotkeys() {
         return {
-            hotkeys: this.hotkeys,
+            hotkeys: { ...this.hotkeys },
             isEnabled: this.isEnabled,
             exportDate: new Date().toISOString()
         };
@@ -246,16 +247,7 @@ export class HotkeyManager {
         return false;
     }
 
-    // Debug helpers
-    debugInfo() {
-        return {
-            hotkeys: this.hotkeys,
-            actions: Array.from(this.actions.keys()),
-            isEnabled: this.isEnabled,
-            conflicts: this.findConflicts()
-        };
-    }
-
+    // Cleanup
     destroy() {
         // Clear all actions
         this.actions.clear();

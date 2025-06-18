@@ -40,6 +40,7 @@ export const DOM_IDS = {
     AUTO_UPDATE_CHECK: 'autoUpdateCheck',
     UPDATE_CHECK_INTERVAL: 'updateCheckInterval',
     CHECK_UPDATES_BTN: 'checkUpdatesBtn',
+    CURRENT_VERSION: 'currentVersion',
 
     // Hotkey Settings
     HOTKEY_START_PAUSE: 'hotkeyStartPause',

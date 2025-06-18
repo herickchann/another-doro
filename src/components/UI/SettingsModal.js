@@ -15,8 +15,8 @@ export class SettingsModal {
         // Settings button
         const settingsBtn = getElementById(DOM_IDS.SETTINGS_BTN);
         if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.open();
+            settingsBtn.addEventListener('click', async () => {
+                await this.open();
             });
         }
 
@@ -52,6 +52,14 @@ export class SettingsModal {
                 }
             });
         }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) {
+                e.preventDefault();
+                this.close();
+            }
+        });
 
         // Settings tabs
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -203,10 +211,10 @@ export class SettingsModal {
         }
     }
 
-    open() {
+    async open() {
         const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
         if (settingsModal) {
-            this.loadSettingsIntoForm();
+            await this.loadSettingsIntoForm();
             settingsModal.style.display = 'flex';
             settingsModal.classList.add(CSS_CLASSES.SHOW);
             this.isOpen = true;
@@ -222,7 +230,7 @@ export class SettingsModal {
         }
     }
 
-    loadSettingsIntoForm() {
+    async loadSettingsIntoForm() {
         const settings = this.app.currentSettings;
 
         // Timer settings
@@ -249,6 +257,16 @@ export class SettingsModal {
         // Update settings
         this.setCheckboxValue(DOM_IDS.AUTO_UPDATE_CHECK, settings.autoUpdateCheck);
         this.setSelectValue(DOM_IDS.UPDATE_CHECK_INTERVAL, settings.updateCheckInterval);
+
+        // Load current version
+        try {
+            if (Environment.canAutoUpdate()) {
+                const currentVersion = await Environment.invokeIPC('get-app-version');
+                this.setTextContent(DOM_IDS.CURRENT_VERSION, currentVersion);
+            }
+        } catch (error) {
+            console.error('Failed to load current version:', error);
+        }
 
         // Hotkeys
         const hotkeys = settings.hotkeys || {};
@@ -308,6 +326,16 @@ export class SettingsModal {
             // Update timer
             this.app.timer.updateSettings(this.app.currentSettings);
 
+            // Update hotkeys immediately - this is the key fix!
+            if (this.app.hotkeyManager) {
+                this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
+            }
+
+            // Update goals manager hotkey display
+            if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+            }
+
             // Apply theme
             this.app.applyTheme(this.app.currentSettings.theme);
 
@@ -335,11 +363,21 @@ export class SettingsModal {
                 // Update timer
                 this.app.timer.updateSettings(this.app.currentSettings);
 
+                // Update hotkeys immediately
+                if (this.app.hotkeyManager) {
+                    this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
+                }
+
+                // Update goals manager hotkey display
+                if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                    this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+                }
+
                 // Apply theme
                 this.app.applyTheme(this.app.currentSettings.theme);
 
                 // Reload form
-                this.loadSettingsIntoForm();
+                await this.loadSettingsIntoForm();
 
                 // Show notification
                 await NotificationService.showSettingsReset();

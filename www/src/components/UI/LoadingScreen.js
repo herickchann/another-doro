@@ -1,4 +1,5 @@
 import { UI_TIMING } from '../../utils/constants.js';
+import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
 
 export class LoadingScreen {
     constructor() {
@@ -10,7 +11,7 @@ export class LoadingScreen {
     }
 
     initialize() {
-        this.loadingElement = document.getElementById('loadingScreen');
+        this.loadingElement = getElementById(DOM_IDS.LOADING_SCREEN);
         this.setupFallbackTimeout();
     }
 
@@ -35,7 +36,7 @@ export class LoadingScreen {
     startFadeOut() {
         if (!this.loadingElement) return;
 
-        this.loadingElement.classList.add('fade-out');
+        this.loadingElement.classList.add(CSS_CLASSES.FADE_OUT);
 
         setTimeout(() => {
             this.completeHide();
@@ -61,7 +62,7 @@ export class LoadingScreen {
     show() {
         if (this.loadingElement) {
             this.loadingElement.style.display = 'flex';
-            this.loadingElement.classList.remove('fade-out');
+            this.loadingElement.classList.remove(CSS_CLASSES.FADE_OUT);
         }
         this.isVisible = true;
     }

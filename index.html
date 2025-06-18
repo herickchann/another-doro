@@ -93,11 +93,11 @@
 
         <main class="timer-section">
             <div class="timer-circle">
-                <svg class="progress-ring" width="250" height="250">
+                <svg class="progress-ring" width="300" height="300">
                     <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent"
-                        r="117" cx="125" cy="125" />
-                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="117"
-                        cx="125" cy="125" id="progressCircle" />
+                        r="140" cx="150" cy="150" />
+                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="140"
+                        cx="150" cy="150" id="progressCircle" />
                 </svg>
                 <div class="timer-display">
                     <div class="time" id="timeDisplay">25:00</div>
@@ -417,7 +417,7 @@
                 </div>
             </div>
             <div class="add-goal-form" id="addGoalForm" style="display: none;">
-                <input type="text" id="goalInput" placeholder="Enter your goal..." maxlength="100">
+                <textarea id="goalInput" placeholder="Enter your goal..." rows="3" maxlength="500"></textarea>
                 <div class="form-buttons">
                     <button class="btn btn-primary btn-small" id="saveGoalBtn">Save</button>
                     <button class="btn btn-secondary btn-small" id="cancelGoalBtn">Cancel</button>

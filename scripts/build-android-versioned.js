@@ -20,35 +20,7 @@ console.log(`📱 Building Android ${buildType} version: ${version}\n`);
 try {
     // Step 1: Sync web assets to www directory
     console.log('📋 Step 1: Syncing web assets...');
-
-    // Ensure www directory exists
-    if (!fs.existsSync('www')) {
-        fs.mkdirSync('www');
-    }
-
-    // Copy main files to www
-    const filesToCopy = [
-        'index.html',
-        'styles.css',
-        'renderer.js',
-        'src',
-        'assets'
-    ];
-
-    filesToCopy.forEach(file => {
-        if (fs.existsSync(file)) {
-            if (fs.statSync(file).isDirectory()) {
-                // Copy directory recursively
-                execSync(`cp -r ${file} www/`, { stdio: 'inherit' });
-            } else {
-                // Copy file
-                execSync(`cp ${file} www/`, { stdio: 'inherit' });
-            }
-            console.log(`   ✅ Copied ${file}`);
-        }
-    });
-
-    console.log('   ✅ Web assets synced\n');
+    execSync('node scripts/sync-www.js', { stdio: 'inherit' });
 
     // Step 2: Sync Capacitor
     console.log('📋 Step 2: Syncing Capacitor...');
