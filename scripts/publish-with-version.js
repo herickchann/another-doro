@@ -186,6 +186,8 @@ async function main() {
         console.log(`
 🚀 Publish Manager Usage:
 
+This script INCREMENTS the version and then publishes.
+
 Commands:
   patch           Increment patch version and publish (1.0.0 → 1.0.1) [default]
   minor           Increment minor version and publish (1.0.0 → 1.1.0)
@@ -197,6 +199,9 @@ Options:
   --skip-push         Skip pushing to remote
   --skip-build        Skip building (for testing)
   --help, -h          Show this help message
+
+Note: To publish the current version WITHOUT bumping, use:
+  npm run publish:now
 
 Examples:
   node scripts/publish-with-version.js patch

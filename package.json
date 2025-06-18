@@ -27,7 +27,7 @@
     "publish:patch": "node scripts/publish-with-version.js patch",
     "publish:minor": "node scripts/publish-with-version.js minor",
     "publish:major": "node scripts/publish-with-version.js major",
-    "publish:now": "node scripts/publish-with-version.js patch",
+    "publish:now": "node scripts/publish-current.js",
     "publish:all": "npm run build:all && npm run publish:mac && npm run publish:android",
     "edit-release-notes": "node scripts/edit-release-notes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
