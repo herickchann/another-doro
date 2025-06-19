@@ -42,10 +42,12 @@ export const DEFAULT_HOTKEYS = {
 // Audio Settings
 export const AUDIO_DEFAULTS = {
     ENABLED: true,
-    VOLUME: 0.7,
+    VOLUME: 1.0, // Boosted to maximum (100%) for loudest notifications
     DEFAULT_SOUND: 'timer-finish.wav',
     TEST_BEEP_FREQUENCY: 800,
-    TEST_BEEP_DURATION: 0.5
+    TEST_BEEP_DURATION: 0.5,
+    NOTIFICATION_LOOPS: 2, // Play notification twice
+    LOOP_DELAY: 500 // 500ms delay between loops
 };
 
 // Auto-update Settings

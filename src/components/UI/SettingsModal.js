@@ -90,11 +90,26 @@ export class SettingsModal {
             });
         }
 
+        // Sound selector dropdown
+        const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
+        if (soundSelector) {
+            soundSelector.addEventListener('change', (e) => {
+                const selectedSound = e.target.value;
+                // Immediately test the newly selected sound for preview
+                AudioService.testSound(selectedSound);
+            });
+        }
+
         // Test sound button
         const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
         if (testSoundBtn) {
             testSoundBtn.addEventListener('click', () => {
-                AudioService.testSound();
+                // Get the currently selected sound from the dropdown
+                const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
+                const selectedSound = soundSelector?.value || 'timer-finish.wav';
+
+                // Test the selected sound
+                AudioService.testSound(selectedSound);
             });
         }
 
@@ -300,18 +315,18 @@ export class SettingsModal {
         try {
             // Collect settings from form
             const newSettings = {
-                workDuration: parseInt(document.getElementById('workDurationInput')?.value) || 25,
-                shortBreakDuration: parseInt(document.getElementById('shortBreakDurationInput')?.value) || 5,
-                longBreakDuration: parseInt(document.getElementById('longBreakDurationInput')?.value) || 15,
-                autoBreak: document.getElementById('autoBreak')?.checked || false,
-                autoWork: document.getElementById('autoWork')?.checked || false,
-                theme: document.getElementById('themeSelector')?.value || 'neon',
-                soundEnabled: document.getElementById('soundEnabled')?.checked || true,
-                volume: parseInt(document.getElementById('volumeSlider')?.value) / 100 || 0.7,
-                currentSound: document.getElementById('soundSelector')?.value || 'timer-finish.wav',
+                workDuration: parseInt(getElementById(DOM_IDS.WORK_DURATION_INPUT)?.value) || 25,
+                shortBreakDuration: parseInt(getElementById(DOM_IDS.SHORT_BREAK_DURATION_INPUT)?.value) || 5,
+                longBreakDuration: parseInt(getElementById(DOM_IDS.LONG_BREAK_DURATION_INPUT)?.value) || 15,
+                autoBreak: getElementById(DOM_IDS.AUTO_BREAK)?.checked || false,
+                autoWork: getElementById(DOM_IDS.AUTO_WORK)?.checked || false,
+                theme: getElementById(DOM_IDS.THEME_SELECTOR)?.value || 'neon',
+                soundEnabled: getElementById(DOM_IDS.SOUND_ENABLED)?.checked || true,
+                volume: parseInt(getElementById(DOM_IDS.VOLUME_SLIDER)?.value) / 100 || 0.7,
+                currentSound: getElementById(DOM_IDS.SOUND_SELECTOR)?.value || 'timer-finish.wav',
                 hotkeys: this.app.currentSettings.hotkeys || {},
-                autoUpdateCheck: document.getElementById('autoUpdateCheck')?.checked || true,
-                updateCheckInterval: parseInt(document.getElementById('updateCheckInterval')?.value) || 24
+                autoUpdateCheck: getElementById(DOM_IDS.AUTO_UPDATE_CHECK)?.checked || true,
+                updateCheckInterval: parseInt(getElementById(DOM_IDS.UPDATE_CHECK_INTERVAL)?.value) || 24
             };
 
             // Update current settings
@@ -402,7 +417,7 @@ export class SettingsModal {
         });
 
         // Show selected tab content
-        const selectedTab = document.getElementById(`${tabName}-tab`);
+        const selectedTab = getElementById(`${tabName}-tab`);
         if (selectedTab) {
             selectedTab.classList.add('active');
         }
@@ -438,8 +453,8 @@ export class SettingsModal {
             return;
         }
 
-        const button = document.getElementById('checkUpdatesBtn');
-        const statusElement = document.getElementById('updateStatus');
+        const button = getElementById(DOM_IDS.CHECK_UPDATES_BTN);
+        const statusElement = getElementById(DOM_IDS.UPDATE_STATUS);
         const originalText = button.textContent;
 
         try {
@@ -470,7 +485,7 @@ export class SettingsModal {
     }
 
     showUpdateStatus(type, message) {
-        const statusElement = document.getElementById('updateStatus');
+        const statusElement = getElementById(DOM_IDS.UPDATE_STATUS);
         if (statusElement) {
             statusElement.textContent = message;
             statusElement.className = `update-status ${type}`;
@@ -478,10 +493,10 @@ export class SettingsModal {
     }
 
     showUpdateInfo(version, releaseNotes) {
-        const infoSection = document.getElementById('updateInfoSection');
-        const versionElement = document.getElementById('newVersion');
-        const notesElement = document.getElementById('updateReleaseNotes');
-        const downloadBtn = document.getElementById('downloadUpdateBtn');
+        const infoSection = getElementById(DOM_IDS.UPDATE_INFO_SECTION);
+        const versionElement = getElementById(DOM_IDS.NEW_VERSION);
+        const notesElement = getElementById(DOM_IDS.UPDATE_RELEASE_NOTES);
+        const downloadBtn = getElementById(DOM_IDS.DOWNLOAD_UPDATE_BTN);
 
         if (versionElement) versionElement.textContent = version;
         if (notesElement) notesElement.textContent = releaseNotes;
@@ -493,8 +508,8 @@ export class SettingsModal {
     }
 
     async downloadUpdate() {
-        const downloadBtn = document.getElementById('downloadUpdateBtn');
-        const installBtn = document.getElementById('installNowBtn');
+        const downloadBtn = getElementById(DOM_IDS.DOWNLOAD_UPDATE_BTN);
+        const installBtn = getElementById(DOM_IDS.INSTALL_NOW_BTN);
 
         try {
             downloadBtn.textContent = 'Downloading...';
@@ -538,23 +553,23 @@ export class SettingsModal {
     }
 
     showProgressSection() {
-        const progressSection = document.getElementById('updateProgressSection');
+        const progressSection = getElementById(DOM_IDS.UPDATE_PROGRESS_SECTION);
         if (progressSection) {
             progressSection.style.display = 'block';
         }
     }
 
     hideProgressSection() {
-        const progressSection = document.getElementById('updateProgressSection');
+        const progressSection = getElementById(DOM_IDS.UPDATE_PROGRESS_SECTION);
         if (progressSection) {
             progressSection.style.display = 'none';
         }
     }
 
     updateProgress(percentage, text) {
-        const progressFill = document.getElementById('settingsProgressFill');
-        const progressText = document.getElementById('settingsProgressText');
-        const progressPercent = document.getElementById('settingsProgressPercent');
+        const progressFill = getElementById(DOM_IDS.SETTINGS_PROGRESS_FILL);
+        const progressText = getElementById(DOM_IDS.SETTINGS_PROGRESS_TEXT);
+        const progressPercent = getElementById(DOM_IDS.SETTINGS_PROGRESS_PERCENT);
 
         if (progressFill) {
             progressFill.style.width = `${Math.min(100, Math.max(0, percentage))}%`;
@@ -589,8 +604,8 @@ export class SettingsModal {
             case 'downloaded':
                 this.hideProgressSection();
                 this.showUpdateStatus('ready', 'Update ready to install');
-                const downloadBtn = document.getElementById('downloadUpdateBtn');
-                const installBtn = document.getElementById('installNowBtn');
+                const downloadBtn = getElementById(DOM_IDS.DOWNLOAD_UPDATE_BTN);
+                const installBtn = getElementById(DOM_IDS.INSTALL_NOW_BTN);
                 if (downloadBtn) downloadBtn.style.display = 'none';
                 if (installBtn) {
                     installBtn.style.display = 'inline-block';

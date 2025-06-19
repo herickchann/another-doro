@@ -25,8 +25,8 @@ export const DOM_IDS = {
     WORK_DURATION_INPUT: 'workDurationInput',
     SHORT_BREAK_DURATION_INPUT: 'shortBreakDurationInput',
     LONG_BREAK_DURATION_INPUT: 'longBreakDurationInput',
-    AUTO_BREAK: 'autoBreak',
-    AUTO_WORK: 'autoWork',
+    AUTO_BREAK: 'autoStartBreaks', // Fixed to match HTML ID
+    AUTO_WORK: 'autoStartWork', // Fixed to match HTML ID
     THEME_SELECTOR: 'themeSelector',
 
     // Audio Settings
@@ -41,6 +41,16 @@ export const DOM_IDS = {
     UPDATE_CHECK_INTERVAL: 'updateCheckInterval',
     CHECK_UPDATES_BTN: 'checkUpdatesBtn',
     CURRENT_VERSION: 'currentVersion',
+    UPDATE_STATUS: 'updateStatus',
+    UPDATE_INFO_SECTION: 'updateInfoSection',
+    NEW_VERSION: 'newVersion',
+    UPDATE_RELEASE_NOTES: 'updateReleaseNotes',
+    DOWNLOAD_UPDATE_BTN: 'downloadUpdateBtn',
+    INSTALL_NOW_BTN: 'installNowBtn',
+    UPDATE_PROGRESS_SECTION: 'updateProgressSection',
+    SETTINGS_PROGRESS_FILL: 'settingsProgressFill',
+    SETTINGS_PROGRESS_TEXT: 'settingsProgressText',
+    SETTINGS_PROGRESS_PERCENT: 'settingsProgressPercent',
 
     // Hotkey Settings
     HOTKEY_START_PAUSE: 'hotkeyStartPause',
@@ -66,6 +76,8 @@ export const DOM_IDS = {
 
     // Stats Section
     STATS_SECTION: 'statsSection',
+    COMPLETED_SESSIONS: 'completedSessions',
+    TOTAL_TIME: 'totalTime',
     SESSIONS_TODAY: 'sessionsToday',
     TOTAL_SESSIONS: 'totalSessions',
     PRODUCTIVITY_SCORE: 'productivityScore',

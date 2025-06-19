@@ -2,6 +2,7 @@
 import { Environment } from './src/utils/environment.js';
 import { Storage } from './src/utils/storage.js';
 import { UI_TIMING } from './src/utils/constants.js';
+import { DOM_IDS, getElementById } from './src/utils/domConstants.js';
 import { NotificationService } from './src/services/NotificationService.js';
 import { AudioService } from './src/services/AudioService.js';
 import { TimerCore } from './src/components/Timer/TimerCore.js';
@@ -303,8 +304,6 @@ class PomodoroApp {
         });
     }
 
-
-
     setupWindowEventListeners() {
         // Handle window focus/blur for better UX
         window.addEventListener('focus', () => {
@@ -330,8 +329,6 @@ class PomodoroApp {
         });
     }
 
-
-
     async initializeElectronFeatures() {
         if (!Environment.canUseIPC()) return;
 
@@ -352,7 +349,7 @@ class PomodoroApp {
     }
 
     initializeDevTools() {
-        const devtoolsToggle = document.getElementById('devtoolsToggle');
+        const devtoolsToggle = getElementById(DOM_IDS.DEVTOOLS_TOGGLE);
         if (devtoolsToggle) {
             devtoolsToggle.style.display = 'flex';
             devtoolsToggle.addEventListener('click', async () => {
@@ -421,8 +418,6 @@ class PomodoroApp {
         }
     }
 
-
-
     // Goals functionality (delegated to GoalsManager)
     removeGoal(goalId) {
         if (this.goalsManager) {
@@ -486,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to create PomodoroApp:', error);
 
         // Show error message instead of loading screen
-        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingScreen = getElementById(DOM_IDS.LOADING_SCREEN);
         if (loadingScreen) {
             const loadingText = loadingScreen.querySelector('.loading-text');
             if (loadingText) {
@@ -499,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Fallback: Force hide loading screen after 10 seconds
 setTimeout(() => {
-    const loadingScreen = document.getElementById('loadingScreen');
+    const loadingScreen = getElementById(DOM_IDS.LOADING_SCREEN);
     if (loadingScreen && loadingScreen.style.display !== 'none') {
         console.warn('Loading screen timeout - forcing hide');
         loadingScreen.style.display = 'none';

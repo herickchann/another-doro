@@ -1,11 +1,16 @@
+import { Environment } from '../../utils/environment.js';
 import { DEFAULT_HOTKEYS } from '../../utils/constants.js';
+import { DOM_IDS, getElementById } from '../../utils/domConstants.js';
 
 export class HotkeyManager {
     constructor() {
         this.hotkeys = { ...DEFAULT_HOTKEYS };
         this.actions = new Map();
-        this.isEnabled = true;
-        this.setupEventListeners();
+        this.isEnabled = Environment.capabilities.hasKeyboardShortcuts;
+
+        if (this.isEnabled) {
+            this.setupGlobalListeners();
+        }
     }
 
     initialize(hotkeys = {}) {
@@ -18,8 +23,23 @@ export class HotkeyManager {
         console.log('Hotkeys updated:', this.hotkeys);
     }
 
-    setupEventListeners() {
+    setupGlobalListeners() {
+        if (!this.isEnabled) return;
+
         document.addEventListener('keydown', (e) => {
+            // Don't trigger hotkeys when typing in inputs or when settings modal is open
+            if (e.target.tagName === 'INPUT' ||
+                e.target.tagName === 'TEXTAREA' ||
+                e.target.contentEditable === 'true') {
+                return;
+            }
+
+            // Don't trigger hotkeys when settings modal is open
+            const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
+            if (settingsModal && settingsModal.classList.contains('show')) {
+                return;
+            }
+
             this.handleKeyDown(e);
         });
     }
@@ -47,7 +67,7 @@ export class HotkeyManager {
         }
 
         // Skip if settings modal is open
-        const settingsModal = document.getElementById('settingsModal');
+        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
         if (settingsModal && settingsModal.classList.contains('show')) {
             return true;
         }
