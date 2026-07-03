@@ -7,6 +7,16 @@
     <title>AnotherDoro</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            if (window.electronAPI) {
+                document.documentElement.classList.add('is-electron');
+                if (window.electronAPI.platform === 'darwin') {
+                    document.documentElement.classList.add('is-macos');
+                }
+            }
+        })();
+    </script>
 </head>
 
 <body>

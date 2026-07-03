@@ -12,15 +12,7 @@ export class SettingsModal {
     }
 
     setupEventListeners() {
-        // Settings button
-        const settingsBtn = getElementById(DOM_IDS.SETTINGS_BTN);
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', async () => {
-                await this.open();
-            });
-        }
-
-        // Settings modal controls
+        // Settings modal controls (opened from drawer)
         const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
         const closeSettingsBtn = getElementById(DOM_IDS.CLOSE_SETTINGS_BTN);
         const saveSettingsBtn = getElementById(DOM_IDS.SAVE_SETTINGS_BTN);
@@ -430,21 +422,7 @@ export class SettingsModal {
     }
 
     async clearAllSessions() {
-        if (confirm('Are you sure you want to clear all session data?\n\nThis will reset:\n• Completed sessions count\n• Total time spent\n• Session counter\n\nThis action cannot be undone.')) {
-            try {
-                // Clear stats in timer
-                this.app.timer.clearStats();
-
-                // Update display
-                this.app.updateStatsDisplay();
-
-                // Show notification
-                await NotificationService.showSessionsCleared();
-
-            } catch (error) {
-                console.error('Failed to clear sessions:', error);
-            }
-        }
+        await this.app.clearAllSessions();
     }
 
     async checkForUpdates() {

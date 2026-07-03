@@ -1,4 +1,5 @@
-import { STORAGE_KEYS, TIMER_DEFAULTS, DEFAULT_HOTKEYS, AUDIO_DEFAULTS, UPDATE_DEFAULTS, THEMES } from './constants.js';
+import { STORAGE_KEYS, SESSION_HISTORY_LIMIT, SESSION_TYPES, TIMER_DEFAULTS, DEFAULT_HOTKEYS, AUDIO_DEFAULTS, UPDATE_DEFAULTS, THEMES } from './constants.js';
+import { migrateHotkeys } from './platformHotkeys.js';
 import { Environment } from './environment.js';
 
 class StorageManager {
@@ -145,7 +146,11 @@ class StorageManager {
         };
 
         const savedSettings = this.getJSON(STORAGE_KEYS.SETTINGS, {});
-        return { ...defaultSettings, ...savedSettings };
+        const settings = { ...defaultSettings, ...savedSettings };
+
+        settings.hotkeys = migrateHotkeys(savedSettings.hotkeys);
+
+        return settings;
     }
 
     saveSettings(settings) {
@@ -172,6 +177,37 @@ class StorageManager {
         return this.setJSON(STORAGE_KEYS.GOALS, goals);
     }
 
+    loadSessionHistory() {
+        return this.getJSON(STORAGE_KEYS.SESSION_HISTORY, []);
+    }
+
+    saveSessionHistory(history) {
+        return this.setJSON(STORAGE_KEYS.SESSION_HISTORY, history);
+    }
+
+    appendSessionRecord(record) {
+        const history = this.loadSessionHistory();
+        history.unshift(record);
+        if (history.length > SESSION_HISTORY_LIMIT) {
+            history.length = SESSION_HISTORY_LIMIT;
+        }
+        return this.saveSessionHistory(history);
+    }
+
+    clearSessionHistory() {
+        return this.remove(STORAGE_KEYS.SESSION_HISTORY);
+    }
+
+    getCompletedWorkSessionCount() {
+        return this.loadSessionHistory().filter(
+            (record) => record.type === SESSION_TYPES.WORK
+        ).length;
+    }
+
+    getCurrentSessionNumber() {
+        return this.getCompletedWorkSessionCount() + 1;
+    }
+
     loadTheme() {
         return this.get(STORAGE_KEYS.THEME, THEMES.NEON);
     }
@@ -191,6 +227,7 @@ class StorageManager {
                 settings: this.loadSettings(),
                 stats: this.loadStats(),
                 goals: this.loadGoals(),
+                sessionHistory: this.loadSessionHistory(),
                 theme: this.loadTheme(),
                 exportDate: new Date().toISOString(),
                 version: '1.0.0'
@@ -211,6 +248,7 @@ class StorageManager {
             if (data.settings) this.saveSettings(data.settings);
             if (data.stats) this.saveStats(data.stats);
             if (data.goals) this.saveGoals(data.goals);
+            if (data.sessionHistory) this.saveSessionHistory(data.sessionHistory);
             if (data.theme) this.saveTheme(data.theme);
             return true;
         } catch (error) {

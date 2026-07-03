@@ -3,7 +3,9 @@
 
 export const DOM_IDS = {
     // Timer Elements
-    TIMER_DISPLAY: 'timerDisplay',
+    TIME_DISPLAY: 'timeDisplay',
+    DIGIT_CLOCK: 'digitClock',
+    TIMER_DISPLAY_WRAPPER: 'timerDisplayWrapper',
     TIMER_TIME: 'timerTime',
     SESSION_TYPE: 'sessionType',
     SESSION_NUMBER: 'sessionNumber',
@@ -13,7 +15,19 @@ export const DOM_IDS = {
     // Control Buttons
     START_PAUSE_BTN: 'startPauseBtn',
     RESET_BTN: 'resetBtn',
+    MENU_BTN: 'menuBtn',
     SETTINGS_BTN: 'settingsBtn',
+
+    // Navigation Drawer
+    SIDE_DRAWER: 'sideDrawer',
+    DRAWER_OVERLAY: 'drawerOverlay',
+    DRAWER_CLOSE_BTN: 'drawerCloseBtn',
+    DRAWER_SETTINGS_BTN: 'drawerSettingsBtn',
+
+    // Session History
+    SESSION_HISTORY_LIST: 'sessionHistoryList',
+    NO_HISTORY_MESSAGE: 'noHistoryMessage',
+    CLEAR_HISTORY_SESSIONS: 'clearHistorySessions',
 
     // Settings Modal
     SETTINGS_MODAL: 'settingsModal',

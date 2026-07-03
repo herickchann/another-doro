@@ -1,5 +1,6 @@
 import { Environment } from '../../utils/environment.js';
 import { DEFAULT_HOTKEYS } from '../../utils/constants.js';
+import { getDefaultHotkeys } from '../../utils/platformHotkeys.js';
 import { DOM_IDS, getElementById } from '../../utils/domConstants.js';
 
 export class HotkeyManager {
@@ -244,7 +245,7 @@ export class HotkeyManager {
 
     // Reset to defaults
     resetToDefaults() {
-        this.hotkeys = { ...DEFAULT_HOTKEYS };
+        this.hotkeys = getDefaultHotkeys();
     }
 
     // Export/Import

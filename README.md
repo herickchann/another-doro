@@ -17,7 +17,7 @@ A clean, minimal Pomodoro timer application built with modern web technologies. 
 
 ### Prerequisites
 
-- **Node.js** (v16 or higher)
+- **Node.js** (v20 or higher)
 - **npm** or **yarn**
 
 #### For desktop builds:
@@ -115,8 +115,8 @@ npx cap open android
 ## 🛠️ Technology Stack
 
 - **Frontend:** HTML5, CSS3, JavaScript (ES6+)
-- **Desktop:** Electron
-- **Mobile:** Capacitor
+- **Desktop:** Electron 43
+- **Mobile:** Capacitor 8
 - **Build System:** Node.js, npm scripts
 - **Platforms:** macOS, Windows, Linux, Android
 
@@ -202,7 +202,7 @@ npm install
 ## 📋 Build Requirements
 
 ### Minimum Versions
-- **Node.js:** 16.0+
+- **Node.js:** 20.0+
 - **npm:** 8.0+
 - **Android SDK:** API 22+ (Android 5.1)
 - **macOS:** 10.13+ (High Sierra)

@@ -30,7 +30,7 @@
     "publish:now": "node scripts/publish-current.js",
     "publish:all": "npm run build:all && npm run publish:mac && npm run publish:android",
     "edit-release-notes": "node scripts/edit-release-notes.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "env -u ELECTRON_RUN_AS_NODE electron scripts/test-window.js"
   },
   "keywords": [
     "pomodoro",
@@ -42,9 +42,10 @@
   "author": "AnotherDoro",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.6.4",
-    "electron-reload": "^2.0.0-alpha.1"
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "electron-reload": "^2.0.0-alpha.1",
+    "typescript": "^5.9.3"
   },
   "build": {
     "appId": "com.anotherdoro.app",
@@ -97,11 +98,14 @@
     }
   },
   "dependencies": {
-    "@capacitor/android": "^7.3.0",
-    "@capacitor/cli": "^7.3.0",
-    "@capacitor/core": "^7.3.0",
-    "@octokit/rest": "^20.0.2",
-    "electron-updater": "^6.1.7",
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@octokit/rest": "^22.0.1",
+    "electron-updater": "^6.8.9",
     "electron-window-state": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

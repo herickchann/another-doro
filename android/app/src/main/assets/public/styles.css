@@ -174,16 +174,26 @@ textarea,
     box-sizing: border-box;
 }
 
-/* Header */
+/* Electron: leave room for macOS traffic lights; keep drag off window edges */
+.is-electron.is-macos .app-container {
+    padding-top: 8px;
+}
+
+.is-electron.is-macos .header {
+    padding-left: 72px;
+    padding-right: 16px;
+    margin-bottom: 24px;
+}
+
+/* Header — drag only on the centered title block, never full width */
 .header {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     margin-bottom: 30px;
-    -webkit-app-region: drag;
     padding: var(--section-padding);
-    cursor: move;
     position: relative;
+    -webkit-app-region: no-drag;
 }
 
 .header-content {
@@ -192,6 +202,14 @@ textarea,
     align-items: center;
     text-align: center;
     flex: 1;
+    max-width: calc(100% - 32px);
+}
+
+.is-electron .header-content {
+    -webkit-app-region: drag;
+    cursor: default;
+    padding: 4px 12px;
+    border-radius: 8px;
 }
 
 .app-title {
@@ -216,9 +234,9 @@ textarea,
 }
 
 .settings-icon {
-    position: fixed;
-    top: 40px;
-    right: 20px;
+    position: absolute;
+    top: var(--section-padding);
+    right: var(--section-padding);
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
@@ -1301,6 +1319,7 @@ input:checked+.slider:before {
 .loading-screen.fade-out {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
 }
 
 .loading-content {

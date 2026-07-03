@@ -14,6 +14,7 @@ another-doro/
 ├── src/                # Source components and utilities
 ├── assets/             # Static assets (images, sounds)
 ├── main.js             # Electron main process
+├── preload.js          # Electron preload bridge (contextIsolation)
 ├── www/                # Generated directory for mobile builds (DO NOT EDIT)
 ├── android/            # Android/Capacitor project
 └── scripts/            # Build and utility scripts

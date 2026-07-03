@@ -1,6 +1,7 @@
 import { PROGRESS_RING } from '../../utils/constants.js';
 import { UI_TEXT } from '../../utils/strings.js';
 import { Environment } from '../../utils/environment.js';
+import { TimerDurationControl } from './TimerDurationControl.js';
 
 export class TimerDisplay {
     constructor(container) {
@@ -8,6 +9,8 @@ export class TimerDisplay {
         this.elements = {};
         this.circumference = 0;
         this.isInitialized = false;
+        this.durationControl = null;
+        this.timer = null;
 
         this._initializeElements();
         this._setupProgressRing();
@@ -53,6 +56,7 @@ export class TimerDisplay {
     // Update methods
     updateTime(currentTime) {
         if (!this.elements.timeDisplay) return;
+        if (this.durationControl?.shouldSkipTimeDisplayUpdate()) return;
 
         const minutes = Math.floor(currentTime / 60);
         const seconds = currentTime % 60;
@@ -86,12 +90,9 @@ export class TimerDisplay {
         this.elements.sessionType.textContent = sessionTypeText;
     }
 
-    updateSessionNumber(sessionCount) {
+    updateSessionNumber(sessionNumber) {
         if (!this.elements.sessionNumber) return;
-
-        // Calculate display session number (1-4 repeating cycle)
-        const displayNumber = Math.floor(sessionCount / 4) * 4 + Math.min(sessionCount % 4 + 1, 4);
-        this.elements.sessionNumber.textContent = displayNumber;
+        this.elements.sessionNumber.textContent = sessionNumber;
     }
 
     updateProgress(progress, sessionType) {
@@ -147,6 +148,8 @@ export class TimerDisplay {
                 this.elements.timerCircle.classList.remove('active');
             }
         }
+
+        this.durationControl?.updateAdjustableState();
     }
 
     // Event binding methods
@@ -188,21 +191,30 @@ export class TimerDisplay {
 
     // Cleanup method
     destroy() {
-        // Remove event listeners if needed
-        // This would be expanded if we stored listener references
+        if (this.durationControl) {
+            this.durationControl.destroy();
+            this.durationControl = null;
+        }
     }
 
     // Full state update
     updateState(state) {
         this.updateTime(state.currentTime);
         this.updateSessionType(state.sessionType);
-        this.updateSessionNumber(state.sessionCount);
+        this.updateSessionNumber(state.sessionNumber ?? state.sessionCount + 1);
         this.updateProgress(state.progress, state.sessionType);
         this.updateButtonStates(state.isRunning, state.isPaused);
+        this.durationControl?.updateAdjustableState();
     }
 
     // Initialize display with state
-    initialize(state) {
+    initialize(state, timer = null) {
+        this.timer = timer;
+
+        if (timer && !this.durationControl) {
+            this.durationControl = new TimerDurationControl(timer);
+        }
+
         this.adaptToEnvironment();
         this.updateState(state);
 

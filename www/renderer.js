@@ -1,12 +1,16 @@
 // Unified renderer for both desktop and mobile environments
 import { Environment } from './src/utils/environment.js';
 import { Storage } from './src/utils/storage.js';
-import { UI_TIMING } from './src/utils/constants.js';
+import { SESSION_TYPES, UI_TIMING } from './src/utils/constants.js';
+import { DOM_IDS, getElementById } from './src/utils/domConstants.js';
+import { CONFIRMATIONS } from './src/utils/strings.js';
 import { NotificationService } from './src/services/NotificationService.js';
 import { AudioService } from './src/services/AudioService.js';
 import { TimerCore } from './src/components/Timer/TimerCore.js';
 import { TimerDisplay } from './src/components/Timer/TimerDisplay.js';
 import { SettingsModal } from './src/components/UI/SettingsModal.js';
+import { NavigationDrawer } from './src/components/UI/NavigationDrawer.js';
+import { SessionHistoryDisplay } from './src/components/UI/SessionHistoryDisplay.js';
 import { GoalsManager } from './src/components/UI/GoalsManager.js';
 import { StatsDisplay } from './src/components/UI/StatsDisplay.js';
 import { ThemeManager } from './src/components/UI/ThemeManager.js';
@@ -22,6 +26,8 @@ class PomodoroApp {
 
         // UI components
         this.settingsModal = null;
+        this.navigationDrawer = null;
+        this.sessionHistoryDisplay = null;
         this.goalsManager = null;
         this.statsDisplay = null;
         this.themeManager = null;
@@ -65,6 +71,9 @@ class PomodoroApp {
             console.log('Applying theme...');
             this.applyTheme(this.currentTheme);
 
+            // Electron-only features (devtools toggle, update listeners)
+            await this.initializeElectronFeatures();
+
             // Hide loading screen
             console.log('Hiding loading screen...');
             setTimeout(() => {
@@ -98,8 +107,9 @@ class PomodoroApp {
         // Load settings
         this.currentSettings = Storage.loadSettings();
 
-        // Load stats
+        // Load stats and align session count with history
         this.currentStats = Storage.loadStats();
+        this.syncSessionCountFromHistory();
 
         // Load goals
         this.currentGoals = Storage.loadGoals();
@@ -136,12 +146,15 @@ class PomodoroApp {
             console.log('Creating TimerDisplay...');
             this.display = new TimerDisplay(appContainer);
             console.log('TimerDisplay created, initializing with state...');
-            this.display.initialize(this.timer.state);
+            this.display.initialize(this.timer.state, this.timer);
             console.log('TimerDisplay initialized');
 
             // Initialize UI components
             console.log('Creating UI components...');
             this.settingsModal = new SettingsModal(this);
+            this.navigationDrawer = new NavigationDrawer(this);
+            this.sessionHistoryDisplay = new SessionHistoryDisplay(this);
+            this.sessionHistoryDisplay.initialize();
             this.goalsManager = new GoalsManager();
             this.goalsManager.initialize(this.currentGoals);
             this.statsDisplay = new StatsDisplay();
@@ -185,6 +198,15 @@ class PomodoroApp {
             this.updateTrayTitle();
         });
 
+        this.timer.on('duration:changed', () => {
+            this.display.durationControl?.syncFromTimer();
+            this.display.updateState(this.timer.state);
+        });
+
+        this.timer.on('timer:updated', () => {
+            this.display.updateState(this.timer.state);
+        });
+
         this.timer.on('timer:started', (data) => {
             this.display.updateButtonStates(true, false);
             this.updateTrayTitle();
@@ -218,6 +240,7 @@ class PomodoroApp {
             };
             Storage.saveStats(this.currentStats);
             this.statsDisplay.updateStats(this.currentStats);
+            this.recordWorkSession(data.previousSessionType, data.sessionDurationSeconds, 'completed');
 
             this.updateTrayTitle();
         });
@@ -238,6 +261,7 @@ class PomodoroApp {
                 };
                 Storage.saveStats(this.currentStats);
                 this.statsDisplay.updateStats(this.currentStats);
+                this.recordWorkSession(data.previousSessionType, data.sessionDurationSeconds, 'skipped');
             }
         });
 
@@ -249,7 +273,10 @@ class PomodoroApp {
         this.timer.on('stats:cleared', (data) => {
             this.currentStats = data;
             Storage.saveStats(this.currentStats);
+            Storage.clearSessionHistory();
+            this.syncSessionCountFromHistory();
             this.statsDisplay.updateStats(this.currentStats);
+            this.sessionHistoryDisplay?.refresh();
             this.display.updateState(this.timer.state);
         });
 
@@ -277,33 +304,110 @@ class PomodoroApp {
     setupHotkeyActions() {
         if (!this.hotkeyManager) return;
 
-        // Register hotkey actions
-        this.hotkeyManager.registerAction('startPause', () => {
-            if (this.timer.isRunning) {
-                this.timer.pause();
-            } else {
-                this.timer.start();
-            }
-        });
-
-        this.hotkeyManager.registerAction('reset', () => {
-            this.timer.resetSession();
-        });
-
-        this.hotkeyManager.registerAction('settings', () => {
-            if (this.settingsModal) {
-                this.settingsModal.open();
-            }
-        });
-
-        this.hotkeyManager.registerAction('addGoal', () => {
-            if (this.goalsManager) {
-                this.goalsManager.showAddGoalForm();
-            }
-        });
+        this.hotkeyManager.registerAction('startPause', () => this.toggleTimer());
+        this.hotkeyManager.registerAction('reset', () => this.resetTimer());
+        this.hotkeyManager.registerAction('settings', () => this.openSettings());
+        this.hotkeyManager.registerAction('addGoal', () => this.addGoal());
     }
 
+    toggleTimer() {
+        if (!this.timer) return;
 
+        if (this.timer.isRunning) {
+            this.timer.pause();
+        } else {
+            this.timer.start();
+        }
+    }
+
+    resetTimer() {
+        if (this.timer) {
+            this.timer.resetSession();
+        }
+    }
+
+    openSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.open();
+        }
+    }
+
+    recordWorkSession(sessionType, durationSeconds, source) {
+        if (sessionType !== SESSION_TYPES.WORK) {
+            return;
+        }
+
+        const goals = this.goalsManager?.getGoals() || [];
+        const goalSnapshot = goals.map((goal) => ({
+            id: goal.id,
+            text: goal.text,
+            completed: goal.completed
+        }));
+
+        const sessionNumber = Storage.getCompletedWorkSessionCount() + 1;
+
+        Storage.appendSessionRecord({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            type: SESSION_TYPES.WORK,
+            completedAt: new Date().toISOString(),
+            durationSeconds: Math.max(0, durationSeconds || 0),
+            source,
+            sessionNumber,
+            goals: goalSnapshot
+        });
+
+        this.syncSessionCountFromHistory();
+        this.sessionHistoryDisplay?.refresh();
+        this.display.updateState(this.timer.state);
+        this.goalsManager?.clearCompleted();
+    }
+
+    syncSessionCountFromHistory() {
+        const workSessionCount = Storage.getCompletedWorkSessionCount();
+        this.currentStats = {
+            ...this.currentStats,
+            sessionCount: workSessionCount,
+            completedSessions: workSessionCount
+        };
+
+        if (this.timer) {
+            this.timer.sessionCount = workSessionCount;
+        }
+
+        Storage.saveStats(this.currentStats);
+    }
+
+    async clearAllSessions() {
+        const message = Environment.isMobile()
+            ? CONFIRMATIONS.CLEAR_SESSIONS_MOBILE
+            : CONFIRMATIONS.CLEAR_SESSIONS;
+
+        if (!confirm(message)) {
+            return;
+        }
+
+        try {
+            this.timer.clearStats();
+            await NotificationService.showSessionsCleared();
+        } catch (error) {
+            console.error('Failed to clear sessions:', error);
+        }
+    }
+
+    addGoal() {
+        if (this.goalsManager) {
+            this.goalsManager.showAddGoalForm();
+        }
+    }
+
+    setupMenuActionListeners() {
+        if (!Environment.canUseIPC()) return;
+
+        Environment.onIPC('open-settings', () => this.openSettings());
+        Environment.onIPC('toggle-timer', () => this.toggleTimer());
+        Environment.onIPC('reset-timer', () => this.resetTimer());
+        Environment.onIPC('add-goal', () => this.addGoal());
+    }
 
     setupWindowEventListeners() {
         // Handle window focus/blur for better UX
@@ -330,12 +434,12 @@ class PomodoroApp {
         });
     }
 
-
-
     async initializeElectronFeatures() {
         if (!Environment.canUseIPC()) return;
 
         try {
+            this.setupMenuActionListeners();
+
             // Initialize DevTools toggle if in development
             if (Environment.isDevelopment()) {
                 this.initializeDevTools();
@@ -352,7 +456,7 @@ class PomodoroApp {
     }
 
     initializeDevTools() {
-        const devtoolsToggle = document.getElementById('devtoolsToggle');
+        const devtoolsToggle = getElementById(DOM_IDS.DEVTOOLS_TOGGLE);
         if (devtoolsToggle) {
             devtoolsToggle.style.display = 'flex';
             devtoolsToggle.addEventListener('click', async () => {
@@ -367,7 +471,7 @@ class PomodoroApp {
 
     async initializeUpdateService() {
         // Set up update event listeners
-        Environment.onIPC('update-status', (event, status, data) => {
+        Environment.onIPC('update-status', (status, data) => {
             this.handleUpdateStatus(status, data);
         });
     }
@@ -420,8 +524,6 @@ class PomodoroApp {
             this.loadingScreen.showError('Failed to load. Please refresh the page.');
         }
     }
-
-
 
     // Goals functionality (delegated to GoalsManager)
     removeGoal(goalId) {
@@ -486,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to create PomodoroApp:', error);
 
         // Show error message instead of loading screen
-        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingScreen = getElementById(DOM_IDS.LOADING_SCREEN);
         if (loadingScreen) {
             const loadingText = loadingScreen.querySelector('.loading-text');
             if (loadingText) {
@@ -499,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Fallback: Force hide loading screen after 10 seconds
 setTimeout(() => {
-    const loadingScreen = document.getElementById('loadingScreen');
+    const loadingScreen = getElementById(DOM_IDS.LOADING_SCREEN);
     if (loadingScreen && loadingScreen.style.display !== 'none') {
         console.warn('Loading screen timeout - forcing hide');
         loadingScreen.style.display = 'none';

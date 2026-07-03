@@ -83,18 +83,39 @@ class AudioServiceClass {
         }
 
         try {
-            if (this.audioElement) {
-                return await this._playAudioElement();
-            } else if (this.audioContext) {
-                return await this._playTestBeep();
-            } else {
-                console.log('🔔 Timer finished! (Audio not available)');
-                return false;
-            }
+            // Play the notification with looping
+            return await this._playWithLoops();
         } catch (error) {
             console.error('Failed to play audio:', error);
             return false;
         }
+    }
+
+    async _playWithLoops() {
+        const loops = AUDIO_DEFAULTS.NOTIFICATION_LOOPS;
+        let success = false;
+
+        for (let i = 0; i < loops; i++) {
+            try {
+                if (this.audioElement) {
+                    success = await this._playAudioElement();
+                } else if (this.audioContext) {
+                    success = await this._playTestBeep();
+                } else {
+                    console.log('🔔 Timer finished! (Audio not available)');
+                    return false;
+                }
+
+                // Add delay between loops (except for the last one)
+                if (i < loops - 1 && success) {
+                    await this._delay(AUDIO_DEFAULTS.LOOP_DELAY);
+                }
+            } catch (error) {
+                console.error(`Failed to play audio loop ${i + 1}:`, error);
+            }
+        }
+
+        return success;
     }
 
     async _playAudioElement() {
@@ -103,9 +124,25 @@ class AudioServiceClass {
             this.audioElement.currentTime = 0;
             this.audioElement.volume = this.volume;
 
-            // Attempt to play
+            // Attempt to play and wait for it to finish
             await this.audioElement.play();
-            return true;
+
+            // Wait for the audio to finish playing
+            return new Promise((resolve) => {
+                const onEnded = () => {
+                    this.audioElement.removeEventListener('ended', onEnded);
+                    resolve(true);
+                };
+
+                const onError = () => {
+                    this.audioElement.removeEventListener('error', onError);
+                    this.audioElement.removeEventListener('ended', onEnded);
+                    resolve(false);
+                };
+
+                this.audioElement.addEventListener('ended', onEnded, { once: true });
+                this.audioElement.addEventListener('error', onError, { once: true });
+            });
         } catch (error) {
             if (error.name === 'NotAllowedError') {
                 console.log(ERROR_MESSAGES.AUDIO_PLAY_FAILED);
@@ -132,7 +169,111 @@ class AudioServiceClass {
             oscillator.frequency.value = AUDIO_DEFAULTS.TEST_BEEP_FREQUENCY;
             oscillator.type = 'sine';
 
-            gainNode.gain.setValueAtTime(this.volume * 0.3, this.audioContext.currentTime);
+            // Boost the test beep volume even more
+            gainNode.gain.setValueAtTime(this.volume * 0.8, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
+
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
+
+            // Wait for the beep to finish
+            await this._delay(AUDIO_DEFAULTS.TEST_BEEP_DURATION * 1000);
+
+            return true;
+        } catch (error) {
+            console.error('Test beep play error:', error);
+            return false;
+        }
+    }
+
+    // Helper method to create delays
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async testSound(soundName = null) {
+        // Use specified sound or current sound for testing
+        const testSoundName = soundName || this.currentSound;
+
+        // Temporarily switch to the test sound if different
+        const originalSound = this.currentSound;
+        if (testSoundName !== this.currentSound) {
+            await this.changeSound(testSoundName);
+        }
+
+        // Play the test sound once without looping
+        const result = await this._playSingle();
+
+        // Restore original sound if we changed it
+        if (testSoundName !== originalSound) {
+            await this.changeSound(originalSound);
+        }
+
+        return result;
+    }
+
+    async testCurrentSound() {
+        // Test the currently selected sound
+        return await this.testSound(this.currentSound);
+    }
+
+    async _playSingle() {
+        if (!this.enabled || !this.isInitialized) {
+            return false;
+        }
+
+        try {
+            if (this.audioElement) {
+                return await this._playAudioElementSingle();
+            } else if (this.audioContext) {
+                return await this._playTestBeepSingle();
+            } else {
+                console.log('🔔 Test sound! (Audio not available)');
+                return false;
+            }
+        } catch (error) {
+            console.error('Failed to play test sound:', error);
+            return false;
+        }
+    }
+
+    async _playAudioElementSingle() {
+        try {
+            // Reset audio to beginning
+            this.audioElement.currentTime = 0;
+            this.audioElement.volume = this.volume;
+
+            // Attempt to play (no waiting for end)
+            await this.audioElement.play();
+            return true;
+        } catch (error) {
+            if (error.name === 'NotAllowedError') {
+                console.log(ERROR_MESSAGES.AUDIO_PLAY_FAILED);
+            } else {
+                console.error('Audio element play error:', error);
+            }
+            return false;
+        }
+    }
+
+    async _playTestBeepSingle() {
+        try {
+            // Resume audio context if suspended
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+
+            oscillator.frequency.value = AUDIO_DEFAULTS.TEST_BEEP_FREQUENCY;
+            oscillator.type = 'sine';
+
+            // Boost the test beep volume
+            gainNode.gain.setValueAtTime(this.volume * 0.8, this.audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
 
             oscillator.start(this.audioContext.currentTime);
@@ -143,10 +284,6 @@ class AudioServiceClass {
             console.error('Test beep play error:', error);
             return false;
         }
-    }
-
-    async testSound() {
-        return await this.play();
     }
 
     async updateSettings(settings) {

@@ -1,59 +1,20 @@
 const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, Notification } = require('electron');
 const path = require('path');
 const windowStateKeeper = require('electron-window-state');
-const { autoUpdater } = require('electron-updater');
+const WINDOW_CONFIG = require('./window-config');
+
+let autoUpdater;
+function getAutoUpdater() {
+    if (!autoUpdater) {
+        autoUpdater = require('electron-updater').autoUpdater;
+    }
+    return autoUpdater;
+}
 
 let mainWindow;
 let tray;
 let mainWindowState;
 let updateCheckResult = null;
-
-// Manual window state backup
-function saveManualWindowState() {
-    if (mainWindow) {
-        const bounds = mainWindow.getBounds();
-        const state = {
-            x: bounds.x,
-            y: bounds.y,
-            width: bounds.width,
-            height: bounds.height,
-            isMaximized: mainWindow.isMaximized()
-        };
-
-        const fs = require('fs');
-        const path = require('path');
-        const { app } = require('electron');
-        const userDataPath = app.getPath('userData');
-        const statePath = path.join(userDataPath, 'manual-window-state.json');
-
-        fs.writeFileSync(statePath, JSON.stringify(state));
-    }
-}
-
-function loadManualWindowState() {
-    try {
-        const fs = require('fs');
-        const path = require('path');
-        const { app } = require('electron');
-        const userDataPath = app.getPath('userData');
-        const statePath = path.join(userDataPath, 'manual-window-state.json');
-
-        if (fs.existsSync(statePath)) {
-            const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-            return state;
-        }
-    } catch (error) {
-        // Silently handle loading errors
-    }
-
-    return {
-        x: undefined,
-        y: undefined,
-        width: 440,
-        height: 680,
-        isMaximized: false
-    };
-}
 
 // Enable live reload for development
 if (process.env.NODE_ENV === 'development') {
@@ -65,6 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Configure auto-updater
 function configureAutoUpdater() {
+    const updater = getAutoUpdater();
     // Don't check for updates in development
     if (process.env.NODE_ENV === 'development') {
         console.log('Auto-updater disabled in development mode');
@@ -86,7 +48,7 @@ function configureAutoUpdater() {
     setInterval(async () => {
         try {
             console.log('Periodic update check (background)...');
-            autoUpdater.checkForUpdatesAndNotify().catch(error => {
+            updater.checkForUpdatesAndNotify().catch(error => {
                 console.log('Periodic update check failed (non-critical):', error.message);
             });
         } catch (error) {
@@ -95,28 +57,28 @@ function configureAutoUpdater() {
     }, 4 * 60 * 60 * 1000);
 
     // Auto-updater event handlers
-    autoUpdater.on('checking-for-update', () => {
+    updater.on('checking-for-update', () => {
         console.log('Checking for updates...');
         if (mainWindow) {
             mainWindow.webContents.send('update-status', 'checking');
         }
     });
 
-    autoUpdater.on('update-available', (info) => {
+    updater.on('update-available', (info) => {
         console.log('Update available:', info.version);
         if (mainWindow) {
             mainWindow.webContents.send('update-status', 'available', info);
         }
     });
 
-    autoUpdater.on('update-not-available', (info) => {
+    updater.on('update-not-available', (info) => {
         console.log('Update not available');
         if (mainWindow) {
             mainWindow.webContents.send('update-status', 'not-available', info);
         }
     });
 
-    autoUpdater.on('error', (err) => {
+    updater.on('error', (err) => {
         console.error('Auto-updater error:', err);
         if (mainWindow) {
             // Sanitize error message to avoid displaying HTML/SVG content
@@ -143,7 +105,7 @@ function configureAutoUpdater() {
         }
     });
 
-    autoUpdater.on('download-progress', (progressObj) => {
+    updater.on('download-progress', (progressObj) => {
         let log_message = "Download speed: " + progressObj.bytesPerSecond;
         log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
         log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
@@ -153,7 +115,7 @@ function configureAutoUpdater() {
         }
     });
 
-    autoUpdater.on('update-downloaded', (info) => {
+    updater.on('update-downloaded', (info) => {
         console.log('Update downloaded:', info.version);
         if (mainWindow) {
             mainWindow.webContents.send('update-status', 'downloaded', info);
@@ -163,101 +125,187 @@ function configureAutoUpdater() {
     // Error handling is already set up above
 }
 
-function createWindow() {
-    // Load manual window state as backup
-    const manualState = loadManualWindowState();
+function sendToRenderer(channel) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(channel);
+    }
+}
 
-    // Load the previous window state or set defaults
-    mainWindowState = windowStateKeeper({
-        defaultWidth: manualState.width,
-        defaultHeight: manualState.height,
-        minWidth: 400,
-        minHeight: 620,
-        file: 'window-state.json',
-        maximize: false,
-        fullScreen: false
-    });
+function createApplicationMenu() {
+    const isMac = process.platform === 'darwin';
 
-    // Use manual state if electron-window-state fails
-    const windowOptions = {
-        x: mainWindowState.x || manualState.x,
-        y: mainWindowState.y || manualState.y,
-        width: mainWindowState.width || manualState.width,
-        height: mainWindowState.height || manualState.height
+    const timerMenu = {
+        label: 'Timer',
+        submenu: [
+            {
+                label: 'Start/Pause',
+                accelerator: 'Space',
+                click: () => sendToRenderer('toggle-timer')
+            },
+            {
+                label: 'Reset Timer',
+                accelerator: 'CmdOrCtrl+Shift+R',
+                click: () => sendToRenderer('reset-timer')
+            },
+            { type: 'separator' },
+            {
+                label: 'Add Goal',
+                accelerator: 'CmdOrCtrl+N',
+                click: () => sendToRenderer('add-goal')
+            }
+        ]
     };
 
+    const template = [
+        ...(isMac ? [{
+            label: app.name,
+            submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                {
+                    label: 'Settings...',
+                    accelerator: 'CmdOrCtrl+,',
+                    click: () => sendToRenderer('open-settings')
+                },
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        }] : [{
+            label: 'File',
+            submenu: [
+                {
+                    label: 'Add Goal',
+                    accelerator: 'CmdOrCtrl+N',
+                    click: () => sendToRenderer('add-goal')
+                },
+                { type: 'separator' },
+                {
+                    label: 'Settings...',
+                    accelerator: 'CmdOrCtrl+,',
+                    click: () => sendToRenderer('open-settings')
+                },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        }]),
+        timerMenu,
+        {
+            label: 'View',
+            submenu: [
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        {
+            label: 'Window',
+            submenu: [
+                { role: 'minimize' },
+                ...(isMac ? [{ type: 'separator' }, { role: 'front' }] : [{ role: 'close' }])
+            ]
+        }
+    ];
 
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
-    // Create the browser window
-    mainWindow = new BrowserWindow({
-        width: windowOptions.width || 447,
-        height: windowOptions.height || 949,
-        x: windowOptions.x,
-        y: windowOptions.y,
-        minWidth: 400,
-        minHeight: 620,
+function getWindowOptions() {
+    const baseOptions = {
+        x: mainWindowState.x,
+        y: mainWindowState.y,
+        width: mainWindowState.width,
+        height: mainWindowState.height,
+        minWidth: WINDOW_CONFIG.MIN_WIDTH,
+        minHeight: WINDOW_CONFIG.MIN_HEIGHT,
         resizable: true,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
         fullscreenable: false,
-        titleBarStyle: 'hiddenInset',
         title: 'AnotherDoro',
         icon: path.join(__dirname, 'assets', 'tray-icon.png'),
-        backgroundColor: '#0f0f0f',
+        backgroundColor: WINDOW_CONFIG.BACKGROUND_COLOR,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true,
-            webSecurity: false
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false
         },
         show: false
+    };
+
+    if (process.platform === 'darwin') {
+        return {
+            ...baseOptions,
+            titleBarStyle: 'hiddenInset',
+            trafficLightPosition: { x: 14, y: 14 }
+        };
+    }
+
+    return baseOptions;
+}
+
+function saveWindowState() {
+    if (mainWindowState && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindowState.saveState(mainWindow);
+    }
+}
+
+function showMainWindow() {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow();
+        return;
+    }
+
+    if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+    }
+
+    mainWindow.show();
+    mainWindow.focus();
+}
+
+function createWindow() {
+    mainWindowState = windowStateKeeper({
+        defaultWidth: WINDOW_CONFIG.DEFAULT_WIDTH,
+        defaultHeight: WINDOW_CONFIG.DEFAULT_HEIGHT,
+        file: WINDOW_CONFIG.STATE_FILE
     });
 
-    // Let windowStateKeeper manage the window
+    mainWindow = new BrowserWindow(getWindowOptions());
     mainWindowState.manage(mainWindow);
 
-    // Add window event listeners for state saving
-    let saveTimeout;
-    mainWindow.on('resize', () => {
-        // Debounce saving during resize
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            saveManualWindowState();
-        }, 500);
-    });
-
-    mainWindow.on('move', () => {
-        // Debounce saving during move
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            saveManualWindowState();
-        }, 500);
-    });
-
-    // Load the app
     mainWindow.loadFile('index.html');
 
-    // Show the window immediately to display loading screen
-    mainWindow.show();
+    mainWindow.once('ready-to-show', () => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        mainWindow.show();
+    });
 
-    // Hide the window instead of closing it
+    // macOS: red close button hides to tray; yellow minimize uses native minimize
     mainWindow.on('close', (event) => {
         if (!app.isQuiting) {
             event.preventDefault();
-            // Save window state before hiding
-            mainWindowState.saveState();
-            saveManualWindowState();
+            saveWindowState();
             mainWindow.hide();
-        } else {
-            // Allow the app to quit for updates
-            console.log('App is quitting (possibly for update)');
         }
     });
 
-    // Save window state before closing
+    mainWindow.on('minimize', () => {
+        saveWindowState();
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
-
-    // DevTools will be toggled via UI button in development mode
 }
 
 function createTray() {
@@ -283,7 +331,7 @@ function createTray() {
         {
             label: 'Show App',
             click: () => {
-                mainWindow.show();
+                showMainWindow();
             }
         },
         {
@@ -299,13 +347,19 @@ function createTray() {
     tray.setContextMenu(contextMenu);
 
     tray.on('click', () => {
-        mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+
+        if (mainWindow.isVisible()) {
+            mainWindow.hide();
+        } else {
+            showMainWindow();
+        }
     });
 }
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
-    // Create window and tray immediately for fast startup
+    createApplicationMenu();
     createWindow();
     createTray();
 
@@ -324,7 +378,7 @@ app.whenReady().then(async () => {
             try {
                 console.log('Checking for updates on startup (background)...');
                 // Run update check asynchronously without blocking
-                autoUpdater.checkForUpdatesAndNotify().catch(error => {
+                updater.checkForUpdatesAndNotify().catch(error => {
                     console.log('Background update check failed (non-critical):', error.message);
                 });
             } catch (error) {
@@ -337,7 +391,7 @@ app.whenReady().then(async () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
         } else {
-            mainWindow.show();
+            showMainWindow();
         }
     });
 });
@@ -352,11 +406,7 @@ app.on('window-all-closed', () => {
 // Ensure window state is saved before app quits
 app.on('before-quit', () => {
     app.isQuiting = true;
-    // Explicitly save window state
-    if (mainWindow && mainWindowState) {
-        mainWindowState.saveState();
-        saveManualWindowState();
-    }
+    saveWindowState();
 });
 
 // IPC handlers for timer functionality
@@ -405,7 +455,7 @@ ipcMain.handle('check-for-updates-manual', async () => {
         });
 
         updateCheckResult = await Promise.race([
-            autoUpdater.checkForUpdates(),
+            getAutoUpdater().checkForUpdates(),
             timeoutPromise
         ]);
 
@@ -467,7 +517,7 @@ ipcMain.handle('check-for-updates', async () => {
         });
 
         updateCheckResult = await Promise.race([
-            autoUpdater.checkForUpdates(),
+            getAutoUpdater().checkForUpdates(),
             timeoutPromise
         ]);
 
@@ -525,7 +575,7 @@ ipcMain.handle('download-update', async () => {
         });
 
         await Promise.race([
-            autoUpdater.downloadUpdate(),
+            getAutoUpdater().downloadUpdate(),
             timeoutPromise
         ]);
 
@@ -568,7 +618,7 @@ ipcMain.handle('install-update', async () => {
         // Set the flag to allow quitting
         app.isQuiting = true;
         // Install the update and restart the app
-        autoUpdater.quitAndInstall(false, true);
+        getAutoUpdater().quitAndInstall(false, true);
         return { success: true };
     } catch (error) {
         console.error('Error installing update:', error);
@@ -609,4 +659,15 @@ ipcMain.handle('set-tray-tooltip', async (event, tooltip) => {
         return { success: true };
     }
     return { success: false, error: 'Tray not available' };
+});
+
+ipcMain.handle('show-main-window', async () => {
+    showMainWindow();
+    return { success: true };
+});
+
+ipcMain.handle('quit-app', async () => {
+    app.isQuiting = true;
+    app.quit();
+    return { success: true };
 }); 

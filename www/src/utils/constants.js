@@ -8,6 +8,17 @@ export const TIMER_DEFAULTS = {
     TICK_INTERVAL: 1000, // milliseconds
 };
 
+export const DURATION_LIMITS = {
+    work: { min: 1, max: 60 },
+    shortBreak: { min: 1, max: 30 },
+    longBreak: { min: 1, max: 60 }
+};
+
+export const DURATION_ADJUST = {
+    STEP_MINUTES: 1,
+    STEP_MINUTES_LARGE: 5
+};
+
 // Session Types
 export const SESSION_TYPES = {
     WORK: 'work',
@@ -31,21 +42,20 @@ export const THEMES = {
     OCEAN: 'ocean'
 };
 
-// Default Hotkeys
-export const DEFAULT_HOTKEYS = {
-    startPause: 'Space',
-    reset: 'R',
-    settings: 'Comma',
-    addGoal: 'G'
-};
+import { getDefaultHotkeys } from './platformHotkeys.js';
+
+// Default Hotkeys (platform-aware: Cmd on Mac, Ctrl on Windows/Linux)
+export const DEFAULT_HOTKEYS = getDefaultHotkeys();
 
 // Audio Settings
 export const AUDIO_DEFAULTS = {
     ENABLED: true,
-    VOLUME: 0.7,
+    VOLUME: 1.0, // Boosted to maximum (100%) for loudest notifications
     DEFAULT_SOUND: 'timer-finish.wav',
     TEST_BEEP_FREQUENCY: 800,
-    TEST_BEEP_DURATION: 0.5
+    TEST_BEEP_DURATION: 0.5,
+    NOTIFICATION_LOOPS: 2, // Play notification twice
+    LOOP_DELAY: 500 // 500ms delay between loops
 };
 
 // Auto-update Settings
@@ -64,15 +74,18 @@ export const STORAGE_KEYS = {
     STATS: 'pomodoroStats',
     GOALS: 'pomodoroGoals',
     THEME: 'pomodoroTheme',
+    SESSION_HISTORY: 'pomodoroSessionHistory',
     WINDOW_STATE: 'manual-window-state.json'
 };
+
+export const SESSION_HISTORY_LIMIT = 200;
 
 // Window Configuration
 export const WINDOW_CONFIG = {
     DEFAULT_WIDTH: 440,
     DEFAULT_HEIGHT: 680,
-    MIN_WIDTH: 400,
-    MIN_HEIGHT: 620,
+    MIN_WIDTH: 380,
+    MIN_HEIGHT: 480,
     BACKGROUND_COLOR: '#0f0f0f'
 };
 

@@ -1,4 +1,5 @@
 import { Storage } from '../../utils/storage.js';
+import { DOM_IDS, getElementById } from '../../utils/domConstants.js';
 
 export class StatsDisplay {
     constructor() {
@@ -10,12 +11,15 @@ export class StatsDisplay {
     }
 
     initialize(stats = {}) {
-        this.stats = { ...this.stats, ...stats };
+        this.stats = {
+            completedSessions: stats.completedSessions || 0,
+            totalTimeSpent: stats.totalTimeSpent || 0
+        };
         this.updateDisplay();
     }
 
-    updateStats(newStats) {
-        this.stats = { ...this.stats, ...newStats };
+    updateStats(stats) {
+        this.stats = { ...this.stats, ...stats };
         this.saveToStorage();
         this.updateDisplay();
     }
@@ -26,17 +30,18 @@ export class StatsDisplay {
     }
 
     updateCompletedSessions() {
-        const completedSessionsElement = document.getElementById('completedSessions');
+        const completedSessionsElement = getElementById(DOM_IDS.COMPLETED_SESSIONS);
         if (completedSessionsElement) {
             completedSessionsElement.textContent = this.stats.completedSessions;
         }
     }
 
     updateTotalTime() {
-        const totalTimeElement = document.getElementById('totalTime');
+        const totalTimeElement = getElementById(DOM_IDS.TOTAL_TIME);
         if (totalTimeElement) {
-            const timeString = this.formatTime(this.stats.totalTimeSpent);
-            totalTimeElement.textContent = timeString;
+            const hours = Math.floor(this.stats.totalTimeSpent / 3600);
+            const minutes = Math.floor((this.stats.totalTimeSpent % 3600) / 60);
+            totalTimeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         }
     }
 

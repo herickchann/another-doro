@@ -2,7 +2,7 @@
 export const UI_TEXT = {
     APP_TITLE: '🍅 AnotherDoro',
     SESSION_TYPES: {
-        WORK: 'Focus Time',
+        WORK: 'Time to Focus',
         SHORT_BREAK: 'Short Break',
         LONG_BREAK: 'Long Break'
     },
@@ -163,8 +163,9 @@ export const CONFIRMATIONS = {
 
 This will reset:
 • Completed sessions count
-• Total time spent  
+• Total time spent
 • Session counter
+• Session history
 
 This action cannot be undone.`,
 
@@ -185,6 +186,7 @@ This will reset:
 • Completed sessions count
 • Total time spent
 • Session counter
+• Session history
 
 This action cannot be undone.`
 };

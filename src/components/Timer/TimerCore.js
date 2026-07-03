@@ -2,6 +2,7 @@ import {
     TIMER_DEFAULTS,
     SESSION_TYPES,
     BREAK_TYPES,
+    DURATION_LIMITS,
     UI_TIMING
 } from '../../utils/constants.js';
 import { EventEmitter } from '../../utils/EventEmitter.js';
@@ -28,6 +29,7 @@ export class TimerCore extends EventEmitter {
         this.autoBreak = settings.autoBreak || false;
         this.autoWork = settings.autoWork || false;
         this.breakType = settings.breakType || BREAK_TYPES.NORMAL;
+        this.pendingSessionSeconds = null;
 
         // Initialize timer
         this._setTimerForCurrentSession();
@@ -85,6 +87,7 @@ export class TimerCore extends EventEmitter {
         this.isPaused = false;
         clearInterval(this.timerInterval);
 
+        this.pendingSessionSeconds = null;
         this._setTimerForCurrentSession();
 
         this.emit('timer:reset', {
@@ -100,9 +103,8 @@ export class TimerCore extends EventEmitter {
         this.isPaused = false;
         clearInterval(this.timerInterval);
 
-        // Reset session data
-        this.sessionCount = 0;
         this.currentSessionType = SESSION_TYPES.WORK;
+        this.pendingSessionSeconds = null;
 
         this._setTimerForCurrentSession();
 
@@ -134,6 +136,7 @@ export class TimerCore extends EventEmitter {
         }
 
         this.currentSessionType = nextSessionType;
+        this.pendingSessionSeconds = null;
         this._setTimerForCurrentSession();
 
         this.emit('session:skipped', {
@@ -141,6 +144,9 @@ export class TimerCore extends EventEmitter {
             nextSessionType,
             currentTime: this.currentTime,
             totalTime: this.totalTime,
+            sessionDurationSeconds: previousSessionType === SESSION_TYPES.WORK
+                ? this.totalTime - this.currentTime
+                : this.totalTime - this.currentTime,
             sessionCount: this.sessionCount,
             completedSessions: this.completedSessions
         });
@@ -152,10 +158,12 @@ export class TimerCore extends EventEmitter {
         this.isPaused = false;
         clearInterval(this.timerInterval);
 
+        const previousSessionType = this.currentSessionType;
+        const sessionDurationSeconds = this.totalTime;
+
         // Add to total time spent
         this.totalTimeSpent += this.totalTime;
 
-        const previousSessionType = this.currentSessionType;
         let nextSessionType = '';
 
         if (this.currentSessionType === SESSION_TYPES.WORK) {
@@ -171,12 +179,14 @@ export class TimerCore extends EventEmitter {
         this.emit('session:completed', {
             previousSessionType,
             nextSessionType,
+            sessionDurationSeconds,
             completedSessions: this.completedSessions,
             sessionCount: this.sessionCount,
             totalTimeSpent: this.totalTimeSpent
         });
 
-        // Reset timer for next session
+        // Reset timer for next session (defaults for new session type)
+        this.pendingSessionSeconds = null;
         this._setTimerForCurrentSession();
 
         this.emit('timer:reset', {
@@ -194,20 +204,81 @@ export class TimerCore extends EventEmitter {
     }
 
     _setTimerForCurrentSession() {
-        switch (this.currentSessionType) {
+        const seconds = this._getDurationSecondsForCurrentSession();
+        this.currentTime = seconds;
+        this.totalTime = seconds;
+    }
+
+    _getDefaultDurationMinutes(sessionType) {
+        switch (sessionType) {
             case SESSION_TYPES.WORK:
-                this.currentTime = this.workDuration * 60;
-                this.totalTime = this.workDuration * 60;
-                break;
+                return this.workDuration;
             case SESSION_TYPES.SHORT_BREAK:
-                this.currentTime = this.shortBreakDuration * 60;
-                this.totalTime = this.shortBreakDuration * 60;
-                break;
+                return this.shortBreakDuration;
             case SESSION_TYPES.LONG_BREAK:
-                this.currentTime = this.longBreakDuration * 60;
-                this.totalTime = this.longBreakDuration * 60;
-                break;
+                return this.longBreakDuration;
+            default:
+                return this.workDuration;
         }
+    }
+
+    _getDurationLimits(sessionType = this.currentSessionType) {
+        return DURATION_LIMITS[sessionType] || DURATION_LIMITS.work;
+    }
+
+    _getDurationSecondsForCurrentSession() {
+        if (this.pendingSessionSeconds !== null) {
+            return this.pendingSessionSeconds;
+        }
+        return this._getDefaultDurationMinutes(this.currentSessionType) * 60;
+    }
+
+    _getMinMaxSeconds(sessionType = this.currentSessionType) {
+        const { min, max } = this._getDurationLimits(sessionType);
+        return { minSeconds: min * 60, maxSeconds: max * 60 };
+    }
+
+    _clampDurationSeconds(totalSeconds, sessionType = this.currentSessionType) {
+        const { minSeconds, maxSeconds } = this._getMinMaxSeconds(sessionType);
+        return Math.min(maxSeconds, Math.max(minSeconds, Math.round(totalSeconds)));
+    }
+
+    canAdjustDuration() {
+        return !this.isRunning && !this.isPaused;
+    }
+
+    getSessionDurationSeconds() {
+        return this.currentTime;
+    }
+
+    getDurationLimits() {
+        return this._getDurationLimits();
+    }
+
+    setSessionTimeSeconds(totalSeconds) {
+        if (!this.canAdjustDuration()) return false;
+
+        const clamped = this._clampDurationSeconds(totalSeconds);
+        this.pendingSessionSeconds = clamped;
+        this.currentTime = clamped;
+        this.totalTime = clamped;
+
+        this.emit('duration:changed', {
+            totalSeconds: clamped,
+            sessionType: this.currentSessionType,
+            isOverride: true
+        });
+
+        return true;
+    }
+
+    setSessionDuration(minutes) {
+        return this.setSessionTimeSeconds(minutes * 60);
+    }
+
+    adjustSessionDuration(deltaMinutes) {
+        if (!this.canAdjustDuration()) return false;
+        return this.setSessionTimeSeconds(this.currentTime + deltaMinutes * 60);
     }
 
     _getNextBreakType() {
@@ -242,6 +313,7 @@ export class TimerCore extends EventEmitter {
             totalTime: this.totalTime,
             sessionType: this.currentSessionType,
             sessionCount: this.sessionCount,
+            sessionNumber: this.sessionCount + 1,
             completedSessions: this.completedSessions,
             totalTimeSpent: this.totalTimeSpent,
             progress: this._getProgress()
@@ -285,7 +357,9 @@ export class TimerCore extends EventEmitter {
 
         // Reset timer if not running and duration might have changed
         if (!wasRunning) {
-            this._setTimerForCurrentSession();
+            if (this.pendingSessionSeconds === null) {
+                this._setTimerForCurrentSession();
+            }
             this.emit('timer:updated', this.state);
         }
 
@@ -316,6 +390,7 @@ export class TimerCore extends EventEmitter {
         this.totalTimeSpent = 0;
         this.sessionCount = 0;
         this.currentSessionType = SESSION_TYPES.WORK;
+        this.pendingSessionSeconds = null;
 
         // Reset timer if running
         if (this.isRunning || this.isPaused) {
