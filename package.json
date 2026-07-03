@@ -1,6 +1,6 @@
 {
   "name": "anotherdoro",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "AnotherDoro - A beautiful Pomodoro timer app",
   "main": "main.js",
   "scripts": {
