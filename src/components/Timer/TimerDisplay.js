@@ -1,4 +1,4 @@
-import { PROGRESS_RING } from '../../utils/constants.js';
+import { PROGRESS_RING, SESSION_TYPES } from '../../utils/constants.js';
 import { UI_TEXT } from '../../utils/strings.js';
 import { Environment } from '../../utils/environment.js';
 import { TimerDurationControl } from './TimerDurationControl.js';
@@ -22,6 +22,8 @@ export class TimerDisplay {
             timeDisplay: this.container.querySelector('#timeDisplay'),
             sessionType: this.container.querySelector('#sessionType'),
             sessionNumber: this.container.querySelector('#sessionNumber'),
+            sessionNumberContainer: this.container.querySelector('.session-number'),
+            breakLabel: this.container.querySelector('#breakLabel'),
             progressCircle: this.container.querySelector('#progressCircle'),
             timerCircle: this.container.querySelector('.timer-circle'),
             startPauseBtn: this.container.querySelector('#startPauseBtn'),
@@ -197,11 +199,35 @@ export class TimerDisplay {
         }
     }
 
+    updateSessionNumberVisibility(sessionType) {
+        if (!this.elements.sessionNumberContainer) return;
+        const isWork = sessionType === SESSION_TYPES.WORK;
+        this.elements.sessionNumberContainer.hidden = !isWork;
+    }
+
+    updateBreakLabel(sessionType) {
+        const { breakLabel } = this.elements;
+        if (!breakLabel) return;
+
+        const isBreak = sessionType === SESSION_TYPES.SHORT_BREAK
+            || sessionType === SESSION_TYPES.LONG_BREAK;
+
+        breakLabel.hidden = !isBreak;
+        breakLabel.textContent = UI_TEXT.BREAK_LABEL;
+
+        breakLabel.classList.toggle('is-short-break', sessionType === SESSION_TYPES.SHORT_BREAK);
+        breakLabel.classList.toggle('is-long-break', sessionType === SESSION_TYPES.LONG_BREAK);
+    }
+
     // Full state update
     updateState(state) {
         this.updateTime(state.currentTime);
         this.updateSessionType(state.sessionType);
-        this.updateSessionNumber(state.sessionNumber ?? state.sessionCount + 1);
+        this.updateSessionNumberVisibility(state.sessionType);
+        this.updateBreakLabel(state.sessionType);
+        if (state.sessionType === SESSION_TYPES.WORK) {
+            this.updateSessionNumber(state.sessionNumber ?? state.sessionCount + 1);
+        }
         this.updateProgress(state.progress, state.sessionType);
         this.updateButtonStates(state.isRunning, state.isPaused);
         this.durationControl?.updateAdjustableState();

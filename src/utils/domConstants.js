@@ -9,6 +9,7 @@ export const DOM_IDS = {
     TIMER_TIME: 'timerTime',
     SESSION_TYPE: 'sessionType',
     SESSION_NUMBER: 'sessionNumber',
+    BREAK_LABEL: 'breakLabel',
     PROGRESS_CIRCLE: 'progressCircle',
     PROGRESS_CIRCLE_BG: 'progressCircleBg',
 
@@ -18,19 +19,21 @@ export const DOM_IDS = {
     MENU_BTN: 'menuBtn',
     SETTINGS_BTN: 'settingsBtn',
 
-    // Navigation Drawer
+    // Navigation Drawer (settings)
     SIDE_DRAWER: 'sideDrawer',
     DRAWER_OVERLAY: 'drawerOverlay',
-    DRAWER_CLOSE_BTN: 'drawerCloseBtn',
-    DRAWER_SETTINGS_BTN: 'drawerSettingsBtn',
 
     // Session History
     SESSION_HISTORY_LIST: 'sessionHistoryList',
     NO_HISTORY_MESSAGE: 'noHistoryMessage',
     CLEAR_HISTORY_SESSIONS: 'clearHistorySessions',
+    VIEW_SESSION_HISTORY_BTN: 'viewSessionHistoryBtn',
+    HISTORY_SHEET: 'historySheet',
+    HISTORY_SHEET_OVERLAY: 'historySheetOverlay',
+    HISTORY_SHEET_DRAG_ZONE: 'historySheetDragZone',
+    HISTORY_SUMMARY: 'historySummary',
 
-    // Settings Modal
-    SETTINGS_MODAL: 'settingsModal',
+    // Settings Drawer
     CLOSE_SETTINGS_BTN: 'closeSettings',
     SAVE_SETTINGS_BTN: 'saveSettings',
     RESTORE_DEFAULTS_BTN: 'restoreDefaults',
@@ -80,6 +83,8 @@ export const DOM_IDS = {
     GOALS_SECTION: 'goalsSection',
     GOALS_LIST: 'goalsList',
     NO_GOALS_MESSAGE: 'noGoalsMessage',
+    GOALS_SECTION_CONTENT: 'goalsSectionContent',
+    GOALS_BREAK_NOTICE: 'goalsBreakNotice',
     ADD_GOAL_BTN: 'addGoalBtn',
     ADD_GOAL_FORM: 'addGoalForm',
     GOAL_INPUT: 'goalInput',
@@ -115,7 +120,18 @@ export const DOM_IDS = {
 
     // Other Buttons
     CLEAR_ALL_SESSIONS: 'clearAllSessions',
-    DEVTOOLS_TOGGLE: 'devtoolsToggle'
+    DEVTOOLS_TOGGLE: 'devtoolsToggle',
+
+    // Confirm Modal
+    CONFIRM_OVERLAY: 'confirmOverlay',
+    CONFIRM_DIALOG: 'confirmDialog',
+    CONFIRM_ICON: 'confirmIcon',
+    CONFIRM_TITLE: 'confirmTitle',
+    CONFIRM_MESSAGE: 'confirmMessage',
+    CONFIRM_DETAILS: 'confirmDetails',
+    CONFIRM_FOOTNOTE: 'confirmFootnote',
+    CONFIRM_CONFIRM_BTN: 'confirmConfirmBtn',
+    CONFIRM_CANCEL_BTN: 'confirmCancelBtn'
 };
 
 // CSS Class Constants
@@ -124,7 +140,9 @@ export const CSS_CLASSES = {
     GOAL_ITEM: 'goal-item',
     GOAL_CHECKBOX: 'goal-checkbox',
     GOAL_TEXT: 'goal-text',
+    GOAL_EDIT_INPUT: 'goal-edit-input',
     GOAL_DELETE: 'goal-delete',
+    IS_BREAK: 'is-break',
     COMPLETED: 'completed',
 
     // Button Classes

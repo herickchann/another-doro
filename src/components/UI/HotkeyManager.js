@@ -1,7 +1,7 @@
 import { Environment } from '../../utils/environment.js';
 import { DEFAULT_HOTKEYS } from '../../utils/constants.js';
 import { getDefaultHotkeys } from '../../utils/platformHotkeys.js';
-import { DOM_IDS, getElementById } from '../../utils/domConstants.js';
+import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
 
 export class HotkeyManager {
     constructor() {
@@ -28,21 +28,43 @@ export class HotkeyManager {
         if (!this.isEnabled) return;
 
         document.addEventListener('keydown', (e) => {
-            // Don't trigger hotkeys when typing in inputs or when settings modal is open
-            if (e.target.tagName === 'INPUT' ||
-                e.target.tagName === 'TEXTAREA' ||
-                e.target.contentEditable === 'true') {
-                return;
-            }
-
-            // Don't trigger hotkeys when settings modal is open
-            const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-            if (settingsModal && settingsModal.classList.contains('show')) {
-                return;
-            }
-
+            if (this.shouldSkipKeyEvent(e)) return;
             this.handleKeyDown(e);
         });
+    }
+
+    static isTextEditingContext(element = document.activeElement) {
+        if (!element || element === document.body || element === document.documentElement) {
+            return false;
+        }
+
+        const tagName = element.tagName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+            return true;
+        }
+
+        if (element.isContentEditable) {
+            return true;
+        }
+
+        if (element.classList?.contains(CSS_CLASSES.GOAL_EDIT_INPUT)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    static shouldBlockAppShortcuts(target = document.activeElement) {
+        if (HotkeyManager.isTextEditingContext(target)) {
+            return true;
+        }
+
+        const settingsDrawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        if (settingsDrawer?.classList.contains('show')) {
+            return true;
+        }
+
+        return false;
     }
 
     handleKeyDown(e) {
@@ -62,19 +84,12 @@ export class HotkeyManager {
     }
 
     shouldSkipKeyEvent(e) {
-        // Skip if typing in inputs
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        if (HotkeyManager.shouldBlockAppShortcuts(e.target)) {
             return true;
         }
 
-        // Skip if settings modal is open
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal && settingsModal.classList.contains('show')) {
-            return true;
-        }
-
-        // Skip if recording hotkeys
-        if (e.target.classList && e.target.classList.contains('recording')) {
+        // Skip if recording hotkeys in settings
+        if (e.target.classList?.contains('recording')) {
             return true;
         }
 

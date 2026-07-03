@@ -139,18 +139,15 @@ function createApplicationMenu() {
         submenu: [
             {
                 label: 'Start/Pause',
-                accelerator: 'Space',
                 click: () => sendToRenderer('toggle-timer')
             },
             {
                 label: 'Reset Timer',
-                accelerator: 'CmdOrCtrl+Shift+R',
                 click: () => sendToRenderer('reset-timer')
             },
             { type: 'separator' },
             {
                 label: 'Add Goal',
-                accelerator: 'CmdOrCtrl+N',
                 click: () => sendToRenderer('add-goal')
             }
         ]
@@ -164,7 +161,6 @@ function createApplicationMenu() {
                 { type: 'separator' },
                 {
                     label: 'Settings...',
-                    accelerator: 'CmdOrCtrl+,',
                     click: () => sendToRenderer('open-settings')
                 },
                 { type: 'separator' },
@@ -181,13 +177,11 @@ function createApplicationMenu() {
             submenu: [
                 {
                     label: 'Add Goal',
-                    accelerator: 'CmdOrCtrl+N',
                     click: () => sendToRenderer('add-goal')
                 },
                 { type: 'separator' },
                 {
                     label: 'Settings...',
-                    accelerator: 'CmdOrCtrl+,',
                     click: () => sendToRenderer('open-settings')
                 },
                 { type: 'separator' },

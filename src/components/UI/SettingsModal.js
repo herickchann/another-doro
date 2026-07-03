@@ -3,6 +3,8 @@ import { NotificationService } from '../../services/NotificationService.js';
 import { AudioService } from '../../services/AudioService.js';
 import { Environment } from '../../utils/environment.js';
 import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
+import { CONFIRMATIONS } from '../../utils/strings.js';
+import { ConfirmModal } from './ConfirmModal.js';
 
 export class SettingsModal {
     constructor(app) {
@@ -12,8 +14,7 @@ export class SettingsModal {
     }
 
     setupEventListeners() {
-        // Settings modal controls (opened from drawer)
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
         const closeSettingsBtn = getElementById(DOM_IDS.CLOSE_SETTINGS_BTN);
         const saveSettingsBtn = getElementById(DOM_IDS.SAVE_SETTINGS_BTN);
         const restoreDefaultsBtn = getElementById(DOM_IDS.RESTORE_DEFAULTS_BTN);
@@ -36,16 +37,13 @@ export class SettingsModal {
             });
         }
 
-        // Close modal when clicking outside
-        if (settingsModal) {
-            settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) {
-                    this.close();
-                }
+        if (drawerOverlay) {
+            drawerOverlay.addEventListener('click', () => {
+                this.close();
             });
         }
 
-        // Close modal with Escape key
+        // Close drawer with Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) {
                 e.preventDefault();
@@ -219,20 +217,22 @@ export class SettingsModal {
     }
 
     async open() {
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal) {
+        const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
+        if (drawer && drawerOverlay) {
             await this.loadSettingsIntoForm();
-            settingsModal.style.display = 'flex';
-            settingsModal.classList.add(CSS_CLASSES.SHOW);
+            drawer.classList.add(CSS_CLASSES.SHOW);
+            drawerOverlay.classList.add(CSS_CLASSES.SHOW);
             this.isOpen = true;
         }
     }
 
     close() {
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal) {
-            settingsModal.style.display = 'none';
-            settingsModal.classList.remove(CSS_CLASSES.SHOW);
+        const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
+        if (drawer && drawerOverlay) {
+            drawer.classList.remove(CSS_CLASSES.SHOW);
+            drawerOverlay.classList.remove(CSS_CLASSES.SHOW);
             this.isOpen = false;
         }
     }
@@ -358,40 +358,43 @@ export class SettingsModal {
     }
 
     async restoreDefaultSettings() {
-        if (confirm('Reset all settings to default values?\n\nThis action cannot be undone.')) {
-            try {
-                // Clear storage to get defaults
-                Storage.remove('pomodoroSettings');
-                this.app.currentSettings = Storage.loadSettings();
+        const confirmed = await ConfirmModal.show(CONFIRMATIONS.RESET_SETTINGS);
+        if (!confirmed) {
+            return;
+        }
 
-                // Update services
-                await AudioService.updateSettings(this.app.currentSettings);
+        try {
+            // Clear storage to get defaults
+            Storage.remove('pomodoroSettings');
+            this.app.currentSettings = Storage.loadSettings();
 
-                // Update timer
-                this.app.timer.updateSettings(this.app.currentSettings);
+            // Update services
+            await AudioService.updateSettings(this.app.currentSettings);
 
-                // Update hotkeys immediately
-                if (this.app.hotkeyManager) {
-                    this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
-                }
+            // Update timer
+            this.app.timer.updateSettings(this.app.currentSettings);
 
-                // Update goals manager hotkey display
-                if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
-                    this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
-                }
-
-                // Apply theme
-                this.app.applyTheme(this.app.currentSettings.theme);
-
-                // Reload form
-                await this.loadSettingsIntoForm();
-
-                // Show notification
-                await NotificationService.showSettingsReset();
-
-            } catch (error) {
-                console.error('Failed to restore default settings:', error);
+            // Update hotkeys immediately
+            if (this.app.hotkeyManager) {
+                this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
             }
+
+            // Update goals manager hotkey display
+            if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+            }
+
+            // Apply theme
+            this.app.applyTheme(this.app.currentSettings.theme);
+
+            // Reload form
+            await this.loadSettingsIntoForm();
+
+            // Show notification
+            await NotificationService.showSettingsReset();
+
+        } catch (error) {
+            console.error('Failed to restore default settings:', error);
         }
     }
 
