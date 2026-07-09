@@ -29,6 +29,23 @@ export class GoalsManager {
         return this.currentSessionType === SESSION_TYPES.WORK;
     }
 
+    isEditingGoal() {
+        return this.editingGoalId !== null;
+    }
+
+    isAddGoalFormOpen() {
+        const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
+        return Boolean(addGoalForm && addGoalForm.style.display !== 'none' && !addGoalForm.hidden);
+    }
+
+    isInGoalEditingFlow() {
+        return this.isEditingGoal() || this.isAddGoalFormOpen();
+    }
+
+    setGoalEditingActive(isActive) {
+        document.body.classList.toggle(CSS_CLASSES.GOAL_EDITING_ACTIVE, isActive);
+    }
+
     applyBreakState() {
         const content = getElementById(DOM_IDS.GOALS_SECTION_CONTENT);
         const notice = getElementById(DOM_IDS.GOALS_BREAK_NOTICE);
@@ -44,6 +61,7 @@ export class GoalsManager {
         if (isBreak) {
             this.cancelEdit();
             this.hideAddGoalForm();
+            this.setGoalEditingActive(false);
         }
     }
 
@@ -124,6 +142,7 @@ export class GoalsManager {
 
         if (addGoalForm) {
             addGoalForm.style.display = 'block';
+            this.setGoalEditingActive(true);
             if (goalInput) {
                 goalInput.focus();
                 // Auto-resize textarea to fit content
@@ -149,6 +168,10 @@ export class GoalsManager {
         // Show the add goal button again
         if (addGoalBtn) {
             addGoalBtn.style.display = 'block';
+        }
+
+        if (!this.isEditingGoal()) {
+            this.setGoalEditingActive(false);
         }
     }
 
@@ -188,6 +211,7 @@ export class GoalsManager {
         if (!goal) return;
 
         this.editingGoalId = goalId;
+        this.setGoalEditingActive(true);
         const goalElement = document.querySelector(`[data-goal-id="${goalId}"]`);
         if (!goalElement) return;
 
@@ -286,6 +310,10 @@ export class GoalsManager {
                 }
             }
             this.editingGoalId = null;
+        }
+
+        if (!this.isAddGoalFormOpen()) {
+            this.setGoalEditingActive(false);
         }
     }
 
@@ -511,6 +539,7 @@ export class GoalsManager {
     destroy() {
         // Clear any ongoing edits
         this.cancelEdit();
+        this.setGoalEditingActive(false);
 
         // Clear goals
         this.goals = [];

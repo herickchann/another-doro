@@ -38,8 +38,7 @@ export class HotkeyManager {
             return false;
         }
 
-        const tagName = element.tagName;
-        if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+        if (element.matches?.('input, textarea, [contenteditable=""], [contenteditable="true"]')) {
             return true;
         }
 
@@ -51,11 +50,45 @@ export class HotkeyManager {
             return true;
         }
 
+        if (element.closest?.(`#${DOM_IDS.ADD_GOAL_FORM}`)) {
+            return true;
+        }
+
         return false;
+    }
+
+    static isNativeTextEditingShortcut(event) {
+        if (!event?.key) {
+            return false;
+        }
+
+        if (!(event.metaKey || event.ctrlKey)) {
+            return false;
+        }
+
+        const nativeKeys = new Set(['a', 'c', 'v', 'x', 'z', 'y']);
+        return nativeKeys.has(event.key.toLowerCase());
+    }
+
+    static isGoalEditingFlowActive() {
+        if (document.body.classList.contains(CSS_CLASSES.GOAL_EDITING_ACTIVE)) {
+            return true;
+        }
+
+        const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
+        if (addGoalForm && addGoalForm.style.display !== 'none' && !addGoalForm.hidden) {
+            return true;
+        }
+
+        return Boolean(window.goalsManager?.isInGoalEditingFlow?.());
     }
 
     static shouldBlockAppShortcuts(target = document.activeElement) {
         if (HotkeyManager.isTextEditingContext(target)) {
+            return true;
+        }
+
+        if (HotkeyManager.isGoalEditingFlowActive()) {
             return true;
         }
 
@@ -84,7 +117,15 @@ export class HotkeyManager {
     }
 
     shouldSkipKeyEvent(e) {
-        if (HotkeyManager.shouldBlockAppShortcuts(e.target)) {
+        const focusTarget = document.activeElement;
+        if (
+            HotkeyManager.shouldBlockAppShortcuts(focusTarget) ||
+            HotkeyManager.shouldBlockAppShortcuts(e.target)
+        ) {
+            return true;
+        }
+
+        if (HotkeyManager.isNativeTextEditingShortcut(e)) {
             return true;
         }
 
