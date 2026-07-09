@@ -20,6 +20,9 @@
 </head>
 
 <body>
+    <!-- macOS traffic-light click shield (must not be a drag region) -->
+    <div class="electron-traffic-shield" aria-hidden="true"></div>
+
     <!-- DevTools Toggle Button (Development Only) -->
     <div class="devtools-toggle" id="devtoolsToggle" style="display: none;">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -84,66 +87,14 @@
         </div>
     </div>
 
-    <div class="app-container">
-        <header class="header">
-            <div class="header-content">
-                <h1 class="app-title">🍅 AnotherDoro</h1>
-                <div class="session-type" id="sessionType">Focus Time</div>
-            </div>
-            <button class="settings-icon" id="settingsBtn" title="Settings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path
-                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                    </path>
-                </svg>
-            </button>
-        </header>
-
-        <main class="timer-section">
-            <div class="timer-circle">
-                <svg class="progress-ring" width="300" height="300">
-                    <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent"
-                        r="140" cx="150" cy="150" />
-                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="140"
-                        cx="150" cy="150" id="progressCircle" />
-                </svg>
-                <div class="timer-display">
-                    <div class="time" id="timeDisplay">25:00</div>
-                    <div class="session-number">Session <span id="sessionNumber">1</span></div>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button class="btn btn-primary" id="startPauseBtn">
-                    <span class="btn-text">Start</span>
-                </button>
-                <button class="btn btn-secondary" id="resetBtn">
-                    <span class="btn-text">Reset</span>
-                </button>
-                <button class="btn btn-tertiary" id="skipBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="5,4 15,12 5,20"></polygon>
-                        <line x1="19" y1="5" x2="19" y2="19"></line>
-                    </svg>
-                    <span class="btn-text">Skip</span>
-                </button>
-            </div>
-        </main>
-
-
-
-        <!-- Settings Modal -->
-        <div class="modal-overlay" id="settingsModal">
-            <div class="modal">
-                <div class="modal-header">
-                    <h2>Settings</h2>
-                    <button class="close-btn" id="closeSettings">&times;</button>
-                </div>
-
-                <div class="modal-body">
+    <!-- Settings Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <aside class="side-drawer settings-drawer" id="sideDrawer" aria-label="Settings">
+        <div class="drawer-header">
+            <h2 class="drawer-title">Settings</h2>
+            <button class="drawer-close-btn" id="closeSettings" title="Close settings" aria-label="Close settings">&times;</button>
+        </div>
+        <div class="drawer-body settings-drawer-body">
                     <div class="settings-tabs">
                         <button class="tab-button active" data-tab="general">General</button>
                         <button class="tab-button" data-tab="sound">Sound</button>
@@ -255,7 +206,6 @@
                                     <button class="btn btn-primary" id="checkUpdatesBtn">Check for Updates</button>
                                     <div class="update-status" id="updateStatus"></div>
 
-                                    <!-- Update information shown under the button -->
                                     <div class="setting-group" id="updateInfoSection" style="display: none;">
                                         <div class="update-details" id="updateDetails">
                                             <div class="update-version">New Version: <span id="newVersion"></span></div>
@@ -269,7 +219,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Download Progress Section -->
                                     <div class="update-progress-section" id="updateProgressSection"
                                         style="display: none;">
                                         <div class="progress-bar">
@@ -316,12 +265,13 @@
                                     </select>
                                 </div>
                                 <div class="setting-group">
-                                    <button class="btn btn-secondary" id="testSoundBtn">Test Sound</button>
+                                    <div class="sound-test-buttons">
+                                        <button class="btn btn-secondary" id="testSoundBtn" type="button">Test Sound</button>
+                                        <button class="btn btn-secondary sound-test-stop" id="stopTestSoundBtn" type="button" hidden>Stop</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-
 
                         <div class="tab-content" id="hotkeys-tab">
                             <div class="hotkey-instructions-top">
@@ -375,31 +325,137 @@
                             </div>
                         </div>
                     </div>
-                </div>
+        </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="restoreDefaults">Restore Defaults</button>
-                    <button class="btn btn-primary" id="saveSettings">Save</button>
+        <div class="drawer-footer settings-drawer-footer">
+            <button class="btn btn-secondary" id="restoreDefaults">Restore Defaults</button>
+            <button class="btn btn-primary" id="saveSettings">Save</button>
+        </div>
+    </aside>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="header-side header-side-left">
+                <button class="header-corner-btn settings-icon" id="settingsBtn" title="Open settings" aria-label="Open settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="header-content">
+                <h1 class="app-title">🍅 AnotherDoro</h1>
+                <div class="session-type" id="sessionType">Time to Focus</div>
+            </div>
+            <div class="header-side header-side-right" aria-hidden="true"></div>
+        </header>
+
+        <div class="app-view active" id="viewTimer" data-view="timer">
+        <main class="timer-section">
+            <div class="timer-circle">
+                <svg class="progress-ring" width="300" height="300">
+                    <circle class="progress-ring__circle-bg" stroke="#2a2a2a" stroke-width="8" fill="transparent"
+                        r="140" cx="150" cy="150" />
+                    <circle class="progress-ring__circle" stroke="#ff6b6b" stroke-width="8" fill="transparent" r="140"
+                        cx="150" cy="150" id="progressCircle" />
+                </svg>
+                <div class="timer-display-wrapper" id="timerDisplayWrapper">
+                    <div class="timer-display">
+                        <div class="digit-clock" id="digitClock" aria-label="Session duration" hidden>
+                            <div class="digit-column" data-index="0">
+                                <button type="button" class="digit-triangle digit-triangle-up"
+                                    aria-label="Increase minute tens" tabindex="-1"></button>
+                                <input type="text" class="digit-field" maxlength="1" inputmode="numeric"
+                                    aria-label="Minute tens digit" data-index="0" />
+                                <button type="button" class="digit-triangle digit-triangle-down"
+                                    aria-label="Decrease minute tens" tabindex="-1"></button>
+                            </div>
+                            <div class="digit-column" data-index="1">
+                                <button type="button" class="digit-triangle digit-triangle-up"
+                                    aria-label="Increase minute ones" tabindex="-1"></button>
+                                <input type="text" class="digit-field" maxlength="1" inputmode="numeric"
+                                    aria-label="Minute ones digit" data-index="1" />
+                                <button type="button" class="digit-triangle digit-triangle-down"
+                                    aria-label="Decrease minute ones" tabindex="-1"></button>
+                            </div>
+                            <span class="digit-colon" aria-hidden="true">:</span>
+                            <div class="digit-column" data-index="2">
+                                <button type="button" class="digit-triangle digit-triangle-up"
+                                    aria-label="Increase second tens" tabindex="-1"></button>
+                                <input type="text" class="digit-field" maxlength="1" inputmode="numeric"
+                                    aria-label="Second tens digit" data-index="2" />
+                                <button type="button" class="digit-triangle digit-triangle-down"
+                                    aria-label="Decrease second tens" tabindex="-1"></button>
+                            </div>
+                            <div class="digit-column" data-index="3">
+                                <button type="button" class="digit-triangle digit-triangle-up"
+                                    aria-label="Increase second ones" tabindex="-1"></button>
+                                <input type="text" class="digit-field" maxlength="1" inputmode="numeric"
+                                    aria-label="Second ones digit" data-index="3" />
+                                <button type="button" class="digit-triangle digit-triangle-down"
+                                    aria-label="Decrease second ones" tabindex="-1"></button>
+                            </div>
+                        </div>
+                        <div class="time" id="timeDisplay">25:00</div>
+                        <div class="session-number">Session <span id="sessionNumber">1</span></div>
+                        <div class="break-label" id="breakLabel" hidden>BREAK</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startPauseBtn">
+                    <span class="btn-text">Start</span>
+                </button>
+                <button class="btn btn-secondary" id="resetBtn">
+                    <span class="btn-text">Reset</span>
+                </button>
+                <button class="btn btn-tertiary" id="skipBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5,4 15,12 5,20"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19"></line>
+                    </svg>
+                    <span class="btn-text">Skip</span>
+                </button>
+            </div>
+        </main>
+
+        <div class="goals-section">
+            <div class="goals-section-content" id="goalsSectionContent">
+                <div class="goals-header">
+                    <h3>Session Goals</h3>
+                    <button class="goals-clear-btn" id="clearAllGoalsBtn" type="button" hidden>
+                        <span class="goals-clear-label">Clear all</span>
+                        <svg class="goals-clear-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <p class="goals-break-notice" id="goalsBreakNotice" hidden>Take a break — goals resume when it's time to focus.</p>
+                <div class="goals-list" id="goalsList">
+                    <div class="no-goals-message" id="noGoalsMessage">
+                        <span>Add goals to focus on during your Pomodoro sessions</span>
+                    </div>
+                </div>
+                <div class="add-goal-form" id="addGoalForm" style="display: none;">
+                    <textarea id="goalInput" placeholder="Enter your goal..." rows="3" maxlength="500"></textarea>
+                    <div class="form-buttons">
+                        <button class="btn btn-primary btn-small" id="saveGoalBtn">Save</button>
+                        <button class="btn btn-secondary btn-small" id="cancelGoalBtn">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="goals-section">
-            <div class="goals-header">
-                <h3>Session Goals</h3>
-            </div>
-            <div class="goals-list" id="goalsList">
-                <div class="no-goals-message" id="noGoalsMessage">
-                    <span>Add goals to focus on during your Pomodoro sessions</span>
-                </div>
-            </div>
-            <div class="add-goal-form" id="addGoalForm" style="display: none;">
-                <textarea id="goalInput" placeholder="Enter your goal..." rows="3" maxlength="500"></textarea>
-                <div class="form-buttons">
-                    <button class="btn btn-primary btn-small" id="saveGoalBtn">Save</button>
-                    <button class="btn btn-secondary btn-small" id="cancelGoalBtn">Cancel</button>
-                </div>
-            </div>
+        <div class="session-history-cta">
+            <button class="session-history-cta-btn" id="viewSessionHistoryBtn" type="button"
+                aria-haspopup="dialog" aria-controls="historySheet" aria-expanded="false">
+                <span class="session-history-cta-label">View session history</span>
+                <svg class="session-history-cta-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+            </button>
         </div>
 
         <div class="stats-section">
@@ -414,8 +470,76 @@
         </div>
 
         <footer class="app-footer">
-            <div class="copyright-text">© 2025 AnotherByte. All rights reserved.</div>
+            <div class="copyright-text" id="copyrightText">© 2026 AnotherByte. All rights reserved.</div>
+            <div class="app-version-text" id="appVersionText"></div>
         </footer>
+        </div>
+    </div>
+
+    <!-- Session History Bottom Sheet -->
+    <div class="history-sheet-overlay" id="historySheetOverlay"></div>
+    <aside class="history-sheet" id="historySheet" aria-label="Session History" aria-hidden="true">
+        <div class="history-sheet-drag-zone" id="historySheetDragZone">
+            <div class="history-sheet-handle" aria-hidden="true"></div>
+            <div class="history-sheet-header">
+                <div class="history-sheet-title-row">
+                    <h2 class="history-heading">Session History</h2>
+                    <button class="history-clear-link" id="clearHistorySessions" type="button" hidden>
+                        <span class="history-clear-label">Clear all</span>
+                        <svg class="history-clear-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <p class="history-summary" id="historySummary">No sessions yet</p>
+            </div>
+        </div>
+        <section class="history-section">
+            <div class="history-list" id="sessionHistoryList"></div>
+            <div class="history-empty" id="noHistoryMessage">
+                <svg class="history-empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <p>Complete a focus session to see it here.</p>
+            </div>
+        </section>
+    </aside>
+
+    <!-- Alarm Banner -->
+    <div class="alarm-alert" id="alarmAlert" hidden role="alert" aria-live="assertive">
+        <div class="alarm-alert__inner">
+            <div class="alarm-alert__animation" aria-hidden="true">
+                <span class="alarm-alert__ring alarm-alert__ring--1"></span>
+                <span class="alarm-alert__ring alarm-alert__ring--2"></span>
+                <span class="alarm-alert__bell">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="alarm-alert__message" id="alarmMessage">Session complete!</p>
+            <button class="btn alarm-alert__stop" id="stopAlarmBtn" type="button">
+                <span class="btn-text">Stop Alarm</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true"
+        aria-labelledby="confirmTitle" aria-describedby="confirmMessage" aria-hidden="true">
+        <div class="confirm-dialog" id="confirmDialog">
+            <div class="confirm-icon" id="confirmIcon" aria-hidden="true"></div>
+            <h2 class="confirm-title" id="confirmTitle"></h2>
+            <p class="confirm-message" id="confirmMessage"></p>
+            <ul class="confirm-details" id="confirmDetails"></ul>
+            <p class="confirm-footnote" id="confirmFootnote"></p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="confirmCancelBtn" type="button">Cancel</button>
+                <button class="btn btn-danger" id="confirmConfirmBtn" type="button">Confirm</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="renderer.js"></script>

@@ -1,18 +1,68 @@
 import { Storage } from '../../utils/storage.js';
+import { SESSION_TYPES } from '../../utils/constants.js';
 import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
 import { MarkdownParser } from '../../utils/markdown.js';
+import { CONFIRMATIONS, UI_TEXT } from '../../utils/strings.js';
+import { ConfirmModal } from './ConfirmModal.js';
 
 export class GoalsManager {
     constructor() {
         this.goals = [];
         this.editingGoalId = null;
         this.currentHotkey = null;
+        this.currentSessionType = SESSION_TYPES.WORK;
         this.setupEventListeners();
     }
 
-    initialize(goals = []) {
+    initialize(goals = [], sessionType = SESSION_TYPES.WORK) {
         this.goals = goals;
+        this.setSessionType(sessionType);
         this.updateDisplay();
+    }
+
+    setSessionType(sessionType) {
+        this.currentSessionType = sessionType;
+        this.applyBreakState();
+    }
+
+    isWorkSession() {
+        return this.currentSessionType === SESSION_TYPES.WORK;
+    }
+
+    isEditingGoal() {
+        return this.editingGoalId !== null;
+    }
+
+    isAddGoalFormOpen() {
+        const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
+        return Boolean(addGoalForm && addGoalForm.style.display !== 'none' && !addGoalForm.hidden);
+    }
+
+    isInGoalEditingFlow() {
+        return this.isEditingGoal() || this.isAddGoalFormOpen();
+    }
+
+    setGoalEditingActive(isActive) {
+        document.body.classList.toggle(CSS_CLASSES.GOAL_EDITING_ACTIVE, isActive);
+    }
+
+    applyBreakState() {
+        const content = getElementById(DOM_IDS.GOALS_SECTION_CONTENT);
+        const notice = getElementById(DOM_IDS.GOALS_BREAK_NOTICE);
+        const isBreak = !this.isWorkSession();
+
+        content?.classList.toggle(CSS_CLASSES.IS_BREAK, isBreak);
+
+        if (notice) {
+            notice.hidden = !isBreak;
+            notice.textContent = UI_TEXT.GOALS.BREAK_NOTICE;
+        }
+
+        if (isBreak) {
+            this.cancelEdit();
+            this.hideAddGoalForm();
+            this.setGoalEditingActive(false);
+        }
     }
 
     // Update hotkey and refresh button display
@@ -47,6 +97,17 @@ export class GoalsManager {
             });
         }
 
+        const clearAllGoalsBtn = getElementById(DOM_IDS.CLEAR_ALL_GOALS_BTN);
+        if (clearAllGoalsBtn) {
+            const label = clearAllGoalsBtn.querySelector('.goals-clear-label');
+            if (label) {
+                label.textContent = UI_TEXT.BUTTONS.CLEAR_ALL_GOALS;
+            }
+            clearAllGoalsBtn.addEventListener('click', () => {
+                this.handleClearAll();
+            });
+        }
+
         if (goalInput) {
             goalInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -66,6 +127,10 @@ export class GoalsManager {
     }
 
     showAddGoalForm() {
+        if (!this.isWorkSession()) {
+            return;
+        }
+
         const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
         const goalInput = getElementById(DOM_IDS.GOAL_INPUT);
         const addGoalBtn = getElementById(DOM_IDS.ADD_GOAL_BTN);
@@ -77,6 +142,7 @@ export class GoalsManager {
 
         if (addGoalForm) {
             addGoalForm.style.display = 'block';
+            this.setGoalEditingActive(true);
             if (goalInput) {
                 goalInput.focus();
                 // Auto-resize textarea to fit content
@@ -103,9 +169,17 @@ export class GoalsManager {
         if (addGoalBtn) {
             addGoalBtn.style.display = 'block';
         }
+
+        if (!this.isEditingGoal()) {
+            this.setGoalEditingActive(false);
+        }
     }
 
     saveGoal() {
+        if (!this.isWorkSession()) {
+            return null;
+        }
+
         const goalInput = getElementById(DOM_IDS.GOAL_INPUT);
         if (goalInput && goalInput.value.trim()) {
             const newGoal = {
@@ -126,6 +200,10 @@ export class GoalsManager {
     }
 
     editGoal(goalId) {
+        if (!this.isWorkSession()) {
+            return;
+        }
+
         // Cancel any existing edit
         this.cancelEdit();
 
@@ -133,6 +211,7 @@ export class GoalsManager {
         if (!goal) return;
 
         this.editingGoalId = goalId;
+        this.setGoalEditingActive(true);
         const goalElement = document.querySelector(`[data-goal-id="${goalId}"]`);
         if (!goalElement) return;
 
@@ -141,7 +220,7 @@ export class GoalsManager {
 
         // Create inline edit textarea
         const textarea = document.createElement('textarea');
-        textarea.className = 'goal-edit-input';
+        textarea.className = CSS_CLASSES.GOAL_EDIT_INPUT;
         textarea.value = goal.text;
         textarea.rows = Math.max(1, goal.text.split('\n').length);
 
@@ -220,7 +299,7 @@ export class GoalsManager {
         if (this.editingGoalId) {
             const goalElement = document.querySelector(`[data-goal-id="${this.editingGoalId}"]`);
             if (goalElement) {
-                const textarea = goalElement.querySelector('.goal-edit-input');
+                const textarea = goalElement.querySelector(`.${CSS_CLASSES.GOAL_EDIT_INPUT}`);
                 const goalTextElement = goalElement.querySelector('.goal-text');
 
                 if (textarea) {
@@ -232,9 +311,17 @@ export class GoalsManager {
             }
             this.editingGoalId = null;
         }
+
+        if (!this.isAddGoalFormOpen()) {
+            this.setGoalEditingActive(false);
+        }
     }
 
     removeGoal(goalId) {
+        if (!this.isWorkSession()) {
+            return;
+        }
+
         // Cancel edit if we're editing this goal
         if (this.editingGoalId === goalId) {
             this.cancelEdit();
@@ -246,6 +333,10 @@ export class GoalsManager {
     }
 
     toggleGoalCompletion(goalId) {
+        if (!this.isWorkSession()) {
+            return;
+        }
+
         // Cancel edit if we're editing this goal
         if (this.editingGoalId === goalId) {
             this.cancelEdit();
@@ -262,9 +353,13 @@ export class GoalsManager {
     updateDisplay() {
         const goalsList = getElementById(DOM_IDS.GOALS_LIST);
         const noGoalsMessage = getElementById(DOM_IDS.NO_GOALS_MESSAGE);
-        const goalsHeader = document.querySelector('.goals-header');
+        const clearAllGoalsBtn = getElementById(DOM_IDS.CLEAR_ALL_GOALS_BTN);
 
         if (!goalsList) return;
+
+        if (clearAllGoalsBtn) {
+            clearAllGoalsBtn.hidden = this.goals.length === 0;
+        }
 
         // Clear current goals
         goalsList.innerHTML = '';
@@ -303,13 +398,14 @@ export class GoalsManager {
 
         // Always add the "Add Goal" button at the bottom of the goals section
         this.addAddGoalButton();
+        this.applyBreakState();
     }
 
     addAddGoalButton() {
-        const goalsSection = document.querySelector('.goals-section');
+        const goalsContent = getElementById(DOM_IDS.GOALS_SECTION_CONTENT);
         const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
 
-        if (!goalsSection || !addGoalForm) return;
+        if (!goalsContent || !addGoalForm) return;
 
         // Remove any existing add goal button
         const existingButton = getElementById(DOM_IDS.ADD_GOAL_BTN);
@@ -320,6 +416,7 @@ export class GoalsManager {
         const addGoalButton = document.createElement('button');
         addGoalButton.className = 'btn-add-goal-inline';
         addGoalButton.id = DOM_IDS.ADD_GOAL_BTN;
+        addGoalButton.type = 'button';
 
         // Get the current hotkey hint
         const hotkeyHint = this.getHotkeyHint();
@@ -336,8 +433,7 @@ export class GoalsManager {
             this.showAddGoalForm();
         });
 
-        // Insert the button right before the add-goal-form
-        goalsSection.insertBefore(addGoalButton, addGoalForm);
+        goalsContent.insertBefore(addGoalButton, addGoalForm);
     }
 
 
@@ -397,7 +493,24 @@ export class GoalsManager {
         this.updateDisplay();
     }
 
+    async handleClearAll() {
+        if (!this.isWorkSession() || this.goals.length === 0) {
+            return;
+        }
+
+        const confirmed = await ConfirmModal.show(CONFIRMATIONS.CLEAR_GOALS);
+        if (!confirmed) {
+            return;
+        }
+
+        this.clearAll();
+    }
+
     clearAll() {
+        if (this.editingGoalId) {
+            this.cancelEdit();
+        }
+
         this.goals = [];
         this.saveToStorage();
         this.updateDisplay();
@@ -426,6 +539,7 @@ export class GoalsManager {
     destroy() {
         // Clear any ongoing edits
         this.cancelEdit();
+        this.setGoalEditingActive(false);
 
         // Clear goals
         this.goals = [];

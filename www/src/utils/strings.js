@@ -6,6 +6,7 @@ export const UI_TEXT = {
         SHORT_BREAK: 'Short Break',
         LONG_BREAK: 'Long Break'
     },
+    BREAK_LABEL: 'BREAK',
     BUTTONS: {
         START: 'Start',
         PAUSE: 'Pause',
@@ -17,21 +18,56 @@ export const UI_TEXT = {
         SETTINGS: 'Settings',
         ADD_GOAL: '+ Add Goal',
         TEST_SOUND: 'Test Sound',
+        STOP_TEST_SOUND: 'Stop',
         CHECK_UPDATES: 'Check for Updates',
         DOWNLOAD_UPDATE: 'Download Update',
         INSTALL_NOW: 'Install Now',
         INSTALL_RESTART: 'Install & Restart',
         RESTORE_DEFAULTS: 'Restore Defaults',
         CLEAR_ALL_SESSIONS: 'Clear All Sessions',
+        CLEAR_ALL_GOALS: 'Clear all',
+        VIEW_SESSION_HISTORY: 'View session history',
+        BACK: 'Back',
+        CLEAR_ALL: 'Clear all',
         NOT_NOW: 'Not Now',
         LATER: 'Later',
-        INSTALL: 'Install'
+        INSTALL: 'Install',
+        STOP_ALARM: 'Stop Alarm'
     },
     PLACEHOLDERS: {
         GOAL_INPUT: 'Enter your goal...',
         HOTKEY_CLICK: 'Click to set hotkey',
         HOTKEY_PRESS: 'Press key combination...'
+    },
+    GOALS: {
+        BREAK_NOTICE: 'Take a break — goals resume when it\'s time to focus.'
     }
+};
+
+export const ALARM_ALERT = {
+    MESSAGES: {
+        WORK_COMPLETE: (breakType) => `Work session complete! Time for a ${breakType}.`,
+        WORK_COMPLETE_DEFAULT: 'Work session complete! Time for a break.',
+        BREAK_COMPLETE: 'Break complete! Time to focus.',
+        LONG_BREAK_COMPLETE: 'Long break complete! Ready to start fresh.'
+    },
+    CLOCK: {
+        WORK: 'Complete!',
+        BREAK: 'Break Over!',
+        LONG_BREAK: 'Complete!'
+    },
+    NOTIFICATION_STOP_ACTION: 'Stop Alarm'
+};
+
+export const HISTORY_TEXT = {
+    TITLE: 'Session History',
+    EMPTY: 'Complete a focus session to see it here.',
+    NO_SESSIONS_SUMMARY: 'No sessions yet',
+    SKIPPED: 'Skipped',
+    SHORT_BREAK: 'Short break',
+    LONG_BREAK: 'Long break',
+    FOCUS_COUNT: (count) => `${count} focus`,
+    BREAK_COUNT: (count) => `${count} break${count === 1 ? '' : 's'}`
 };
 
 // Notification Messages
@@ -157,38 +193,67 @@ export const GOALS_TEXT = {
     INPUT_MAX_LENGTH: 100
 };
 
-// Confirmation Messages
+// Confirmation dialog configs
 export const CONFIRMATIONS = {
-    CLEAR_SESSIONS: `Are you sure you want to clear all session data?
+    CLEAR_SESSIONS: {
+        title: 'Clear all session data?',
+        message: 'This will permanently reset:',
+        details: [
+            'Completed sessions count',
+            'Total time spent',
+            'Session counter',
+            'Session history'
+        ],
+        confirmText: 'Clear all sessions',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        icon: 'sessions',
+        footnote: 'This action cannot be undone.'
+    },
 
-This will reset:
-• Completed sessions count
-• Total time spent
-• Session counter
-• Session history
+    CLEAR_SESSIONS_MOBILE: {
+        title: 'Clear all session data?',
+        message: 'This will permanently reset:',
+        details: [
+            'Completed sessions count',
+            'Total time spent',
+            'Session counter',
+            'Session history'
+        ],
+        confirmText: 'Clear all',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        icon: 'sessions',
+        footnote: 'This action cannot be undone.'
+    },
 
-This action cannot be undone.`,
+    RESET_SETTINGS: {
+        title: 'Restore default settings?',
+        message: 'This will reset:',
+        details: [
+            'Theme to Neon Vibes',
+            'Work duration to 25 minutes',
+            'Short break to 5 minutes',
+            'Long break to 15 minutes',
+            'Auto-break settings to off'
+        ],
+        confirmText: 'Restore defaults',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        icon: 'reset',
+        footnote: 'This action cannot be undone.'
+    },
 
-    RESET_SETTINGS: `Reset all settings to default values?
-
-This will reset:
-• Theme to Neon Vibes
-• Work duration to 25 minutes
-• Short break to 5 minutes
-• Long break to 15 minutes
-• Auto-break settings to off
-
-This action cannot be undone.`,
-
-    CLEAR_SESSIONS_MOBILE: `Clear all session data?
-
-This will reset:
-• Completed sessions count
-• Total time spent
-• Session counter
-• Session history
-
-This action cannot be undone.`
+    CLEAR_GOALS: {
+        title: 'Clear all goals?',
+        message: 'This will remove every session goal from your list.',
+        details: [],
+        confirmText: 'Clear all',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        icon: 'goals',
+        footnote: 'This action cannot be undone.'
+    }
 };
 
 // Update Status Messages
@@ -216,7 +281,7 @@ export const HOTKEY_INSTRUCTIONS = {
 };
 
 // Copyright
-export const COPYRIGHT = '© 2025 AnotherByte. All rights reserved.';
+export const COPYRIGHT = '© 2026 AnotherByte. All rights reserved.';
 
 // Key Mappings for Display
 export const KEY_DISPLAY_MAP = {

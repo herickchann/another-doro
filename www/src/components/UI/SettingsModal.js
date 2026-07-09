@@ -3,17 +3,19 @@ import { NotificationService } from '../../services/NotificationService.js';
 import { AudioService } from '../../services/AudioService.js';
 import { Environment } from '../../utils/environment.js';
 import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
+import { CONFIRMATIONS, UI_TEXT } from '../../utils/strings.js';
+import { ConfirmModal } from './ConfirmModal.js';
 
 export class SettingsModal {
     constructor(app) {
         this.app = app;
         this.isOpen = false;
+        this.isTestSoundPlaying = false;
         this.setupEventListeners();
     }
 
     setupEventListeners() {
-        // Settings modal controls (opened from drawer)
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
         const closeSettingsBtn = getElementById(DOM_IDS.CLOSE_SETTINGS_BTN);
         const saveSettingsBtn = getElementById(DOM_IDS.SAVE_SETTINGS_BTN);
         const restoreDefaultsBtn = getElementById(DOM_IDS.RESTORE_DEFAULTS_BTN);
@@ -36,16 +38,13 @@ export class SettingsModal {
             });
         }
 
-        // Close modal when clicking outside
-        if (settingsModal) {
-            settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) {
-                    this.close();
-                }
+        if (drawerOverlay) {
+            drawerOverlay.addEventListener('click', () => {
+                this.close();
             });
         }
 
-        // Close modal with Escape key
+        // Close drawer with Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) {
                 e.preventDefault();
@@ -82,26 +81,19 @@ export class SettingsModal {
             });
         }
 
-        // Sound selector dropdown
-        const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
-        if (soundSelector) {
-            soundSelector.addEventListener('change', (e) => {
-                const selectedSound = e.target.value;
-                // Immediately test the newly selected sound for preview
-                AudioService.testSound(selectedSound);
+        // Test sound controls
+        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
+        const stopTestSoundBtn = getElementById(DOM_IDS.STOP_TEST_SOUND_BTN);
+
+        if (testSoundBtn) {
+            testSoundBtn.addEventListener('click', () => {
+                this.handleTestSound();
             });
         }
 
-        // Test sound button
-        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
-        if (testSoundBtn) {
-            testSoundBtn.addEventListener('click', () => {
-                // Get the currently selected sound from the dropdown
-                const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
-                const selectedSound = soundSelector?.value || 'timer-finish.wav';
-
-                // Test the selected sound
-                AudioService.testSound(selectedSound);
+        if (stopTestSoundBtn) {
+            stopTestSoundBtn.addEventListener('click', () => {
+                this.handleStopTestSound();
             });
         }
 
@@ -218,21 +210,65 @@ export class SettingsModal {
         }
     }
 
+    async handleTestSound() {
+        if (this.isTestSoundPlaying) {
+            return;
+        }
+
+        const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
+        const selectedSound = soundSelector?.value || 'timer-finish.wav';
+
+        this.setTestSoundPlaying(true);
+
+        try {
+            await AudioService.playTestSound(selectedSound);
+        } finally {
+            this.setTestSoundPlaying(false);
+        }
+    }
+
+    handleStopTestSound() {
+        AudioService.stopTestSound();
+        this.setTestSoundPlaying(false);
+    }
+
+    setTestSoundPlaying(isPlaying) {
+        this.isTestSoundPlaying = isPlaying;
+
+        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
+        const stopTestSoundBtn = getElementById(DOM_IDS.STOP_TEST_SOUND_BTN);
+
+        if (testSoundBtn) {
+            testSoundBtn.disabled = isPlaying;
+            testSoundBtn.textContent = UI_TEXT.BUTTONS.TEST_SOUND;
+        }
+
+        if (stopTestSoundBtn) {
+            stopTestSoundBtn.hidden = !isPlaying;
+            stopTestSoundBtn.textContent = UI_TEXT.BUTTONS.STOP_TEST_SOUND;
+        }
+    }
+
     async open() {
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal) {
+        const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
+        if (drawer && drawerOverlay) {
             await this.loadSettingsIntoForm();
-            settingsModal.style.display = 'flex';
-            settingsModal.classList.add(CSS_CLASSES.SHOW);
+            this.setTestSoundPlaying(false);
+            drawer.classList.add(CSS_CLASSES.SHOW);
+            drawerOverlay.classList.add(CSS_CLASSES.SHOW);
             this.isOpen = true;
         }
     }
 
     close() {
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal) {
-            settingsModal.style.display = 'none';
-            settingsModal.classList.remove(CSS_CLASSES.SHOW);
+        this.handleStopTestSound();
+
+        const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
+        if (drawer && drawerOverlay) {
+            drawer.classList.remove(CSS_CLASSES.SHOW);
+            drawerOverlay.classList.remove(CSS_CLASSES.SHOW);
             this.isOpen = false;
         }
     }
@@ -358,40 +394,43 @@ export class SettingsModal {
     }
 
     async restoreDefaultSettings() {
-        if (confirm('Reset all settings to default values?\n\nThis action cannot be undone.')) {
-            try {
-                // Clear storage to get defaults
-                Storage.remove('pomodoroSettings');
-                this.app.currentSettings = Storage.loadSettings();
+        const confirmed = await ConfirmModal.show(CONFIRMATIONS.RESET_SETTINGS);
+        if (!confirmed) {
+            return;
+        }
 
-                // Update services
-                await AudioService.updateSettings(this.app.currentSettings);
+        try {
+            // Clear storage to get defaults
+            Storage.remove('pomodoroSettings');
+            this.app.currentSettings = Storage.loadSettings();
 
-                // Update timer
-                this.app.timer.updateSettings(this.app.currentSettings);
+            // Update services
+            await AudioService.updateSettings(this.app.currentSettings);
 
-                // Update hotkeys immediately
-                if (this.app.hotkeyManager) {
-                    this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
-                }
+            // Update timer
+            this.app.timer.updateSettings(this.app.currentSettings);
 
-                // Update goals manager hotkey display
-                if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
-                    this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
-                }
-
-                // Apply theme
-                this.app.applyTheme(this.app.currentSettings.theme);
-
-                // Reload form
-                await this.loadSettingsIntoForm();
-
-                // Show notification
-                await NotificationService.showSettingsReset();
-
-            } catch (error) {
-                console.error('Failed to restore default settings:', error);
+            // Update hotkeys immediately
+            if (this.app.hotkeyManager) {
+                this.app.hotkeyManager.updateHotkeys(this.app.currentSettings.hotkeys || {});
             }
+
+            // Update goals manager hotkey display
+            if (this.app.goalsManager && this.app.currentSettings.hotkeys) {
+                this.app.goalsManager.updateHotkey(this.app.currentSettings.hotkeys.addGoal || null);
+            }
+
+            // Apply theme
+            this.app.applyTheme(this.app.currentSettings.theme);
+
+            // Reload form
+            await this.loadSettingsIntoForm();
+
+            // Show notification
+            await NotificationService.showSettingsReset();
+
+        } catch (error) {
+            console.error('Failed to restore default settings:', error);
         }
     }
 

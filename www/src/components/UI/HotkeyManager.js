@@ -1,7 +1,7 @@
 import { Environment } from '../../utils/environment.js';
 import { DEFAULT_HOTKEYS } from '../../utils/constants.js';
 import { getDefaultHotkeys } from '../../utils/platformHotkeys.js';
-import { DOM_IDS, getElementById } from '../../utils/domConstants.js';
+import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
 
 export class HotkeyManager {
     constructor() {
@@ -28,21 +28,76 @@ export class HotkeyManager {
         if (!this.isEnabled) return;
 
         document.addEventListener('keydown', (e) => {
-            // Don't trigger hotkeys when typing in inputs or when settings modal is open
-            if (e.target.tagName === 'INPUT' ||
-                e.target.tagName === 'TEXTAREA' ||
-                e.target.contentEditable === 'true') {
-                return;
-            }
-
-            // Don't trigger hotkeys when settings modal is open
-            const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-            if (settingsModal && settingsModal.classList.contains('show')) {
-                return;
-            }
-
+            if (this.shouldSkipKeyEvent(e)) return;
             this.handleKeyDown(e);
         });
+    }
+
+    static isTextEditingContext(element = document.activeElement) {
+        if (!element || element === document.body || element === document.documentElement) {
+            return false;
+        }
+
+        if (element.matches?.('input, textarea, [contenteditable=""], [contenteditable="true"]')) {
+            return true;
+        }
+
+        if (element.isContentEditable) {
+            return true;
+        }
+
+        if (element.classList?.contains(CSS_CLASSES.GOAL_EDIT_INPUT)) {
+            return true;
+        }
+
+        if (element.closest?.(`#${DOM_IDS.ADD_GOAL_FORM}`)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    static isNativeTextEditingShortcut(event) {
+        if (!event?.key) {
+            return false;
+        }
+
+        if (!(event.metaKey || event.ctrlKey)) {
+            return false;
+        }
+
+        const nativeKeys = new Set(['a', 'c', 'v', 'x', 'z', 'y']);
+        return nativeKeys.has(event.key.toLowerCase());
+    }
+
+    static isGoalEditingFlowActive() {
+        if (document.body.classList.contains(CSS_CLASSES.GOAL_EDITING_ACTIVE)) {
+            return true;
+        }
+
+        const addGoalForm = getElementById(DOM_IDS.ADD_GOAL_FORM);
+        if (addGoalForm && addGoalForm.style.display !== 'none' && !addGoalForm.hidden) {
+            return true;
+        }
+
+        return Boolean(window.goalsManager?.isInGoalEditingFlow?.());
+    }
+
+    static shouldBlockAppShortcuts(target = document.activeElement) {
+        if (HotkeyManager.isTextEditingContext(target)) {
+            return true;
+        }
+
+        if (HotkeyManager.isGoalEditingFlowActive()) {
+            return true;
+        }
+
+        const settingsDrawer = getElementById(DOM_IDS.SIDE_DRAWER);
+        if (settingsDrawer?.classList.contains('show')) {
+            return true;
+        }
+
+        return false;
     }
 
     handleKeyDown(e) {
@@ -62,19 +117,20 @@ export class HotkeyManager {
     }
 
     shouldSkipKeyEvent(e) {
-        // Skip if typing in inputs
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        const focusTarget = document.activeElement;
+        if (
+            HotkeyManager.shouldBlockAppShortcuts(focusTarget) ||
+            HotkeyManager.shouldBlockAppShortcuts(e.target)
+        ) {
             return true;
         }
 
-        // Skip if settings modal is open
-        const settingsModal = getElementById(DOM_IDS.SETTINGS_MODAL);
-        if (settingsModal && settingsModal.classList.contains('show')) {
+        if (HotkeyManager.isNativeTextEditingShortcut(e)) {
             return true;
         }
 
-        // Skip if recording hotkeys
-        if (e.target.classList && e.target.classList.contains('recording')) {
+        // Skip if recording hotkeys in settings
+        if (e.target.classList?.contains('recording')) {
             return true;
         }
 

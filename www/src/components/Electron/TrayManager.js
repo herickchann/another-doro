@@ -56,12 +56,14 @@ export class TrayManager {
         }
     }
 
-    async updateTimerDisplay(currentTime, isRunning, isPaused) {
+    async updateTimerDisplay(currentTime, isRunning, isPaused, isAlarmRinging = false) {
         if (!this.isEnabled) return;
 
         let title = '';
 
-        if (isRunning) {
+        if (isAlarmRinging) {
+            title = '00:00';
+        } else if (isRunning) {
             const minutes = Math.floor(currentTime / 60);
             const seconds = currentTime % 60;
             title = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -157,8 +159,6 @@ export class TrayManager {
             messages[sessionType] || 'Session completed!',
             { silent: false }
         );
-
-        this.updateSessionType(nextSessionType);
     }
 
     // Context menu actions
@@ -263,14 +263,18 @@ export class TrayManager {
 
         timer.on('timer:started', () => this.onTimerStart());
         timer.on('timer:paused', () => this.onTimerPause());
-        timer.on('timer:reset', () => this.onTimerReset());
+        timer.on('timer:reset', () => {
+            this.onTimerReset();
+            this.updateSessionType(timer.currentSessionType);
+        });
 
         timer.on('timer:tick', (data) => {
-            this.updateTimerDisplay(data.currentTime, timer.isRunning, timer.isPaused);
+            this.updateTimerDisplay(data.currentTime, timer.isRunning, timer.isPaused, timer.isAlarmRinging);
         });
 
         timer.on('session:completed', (data) => {
             this.onSessionComplete(data.previousSessionType, data.nextSessionType);
+            this.updateTimerDisplay(0, false, false, true);
         });
     }
 
