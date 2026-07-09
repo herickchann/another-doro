@@ -3,13 +3,14 @@ import { NotificationService } from '../../services/NotificationService.js';
 import { AudioService } from '../../services/AudioService.js';
 import { Environment } from '../../utils/environment.js';
 import { DOM_IDS, CSS_CLASSES, getElementById } from '../../utils/domConstants.js';
-import { CONFIRMATIONS } from '../../utils/strings.js';
+import { CONFIRMATIONS, UI_TEXT } from '../../utils/strings.js';
 import { ConfirmModal } from './ConfirmModal.js';
 
 export class SettingsModal {
     constructor(app) {
         this.app = app;
         this.isOpen = false;
+        this.isTestSoundPlaying = false;
         this.setupEventListeners();
     }
 
@@ -80,26 +81,19 @@ export class SettingsModal {
             });
         }
 
-        // Sound selector dropdown
-        const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
-        if (soundSelector) {
-            soundSelector.addEventListener('change', (e) => {
-                const selectedSound = e.target.value;
-                // Immediately test the newly selected sound for preview
-                AudioService.testSound(selectedSound);
+        // Test sound controls
+        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
+        const stopTestSoundBtn = getElementById(DOM_IDS.STOP_TEST_SOUND_BTN);
+
+        if (testSoundBtn) {
+            testSoundBtn.addEventListener('click', () => {
+                this.handleTestSound();
             });
         }
 
-        // Test sound button
-        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
-        if (testSoundBtn) {
-            testSoundBtn.addEventListener('click', () => {
-                // Get the currently selected sound from the dropdown
-                const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
-                const selectedSound = soundSelector?.value || 'timer-finish.wav';
-
-                // Test the selected sound
-                AudioService.testSound(selectedSound);
+        if (stopTestSoundBtn) {
+            stopTestSoundBtn.addEventListener('click', () => {
+                this.handleStopTestSound();
             });
         }
 
@@ -216,11 +210,51 @@ export class SettingsModal {
         }
     }
 
+    async handleTestSound() {
+        if (this.isTestSoundPlaying) {
+            return;
+        }
+
+        const soundSelector = getElementById(DOM_IDS.SOUND_SELECTOR);
+        const selectedSound = soundSelector?.value || 'timer-finish.wav';
+
+        this.setTestSoundPlaying(true);
+
+        try {
+            await AudioService.playTestSound(selectedSound);
+        } finally {
+            this.setTestSoundPlaying(false);
+        }
+    }
+
+    handleStopTestSound() {
+        AudioService.stopTestSound();
+        this.setTestSoundPlaying(false);
+    }
+
+    setTestSoundPlaying(isPlaying) {
+        this.isTestSoundPlaying = isPlaying;
+
+        const testSoundBtn = getElementById(DOM_IDS.TEST_SOUND_BTN);
+        const stopTestSoundBtn = getElementById(DOM_IDS.STOP_TEST_SOUND_BTN);
+
+        if (testSoundBtn) {
+            testSoundBtn.disabled = isPlaying;
+            testSoundBtn.textContent = UI_TEXT.BUTTONS.TEST_SOUND;
+        }
+
+        if (stopTestSoundBtn) {
+            stopTestSoundBtn.hidden = !isPlaying;
+            stopTestSoundBtn.textContent = UI_TEXT.BUTTONS.STOP_TEST_SOUND;
+        }
+    }
+
     async open() {
         const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
         const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
         if (drawer && drawerOverlay) {
             await this.loadSettingsIntoForm();
+            this.setTestSoundPlaying(false);
             drawer.classList.add(CSS_CLASSES.SHOW);
             drawerOverlay.classList.add(CSS_CLASSES.SHOW);
             this.isOpen = true;
@@ -228,6 +262,8 @@ export class SettingsModal {
     }
 
     close() {
+        this.handleStopTestSound();
+
         const drawer = getElementById(DOM_IDS.SIDE_DRAWER);
         const drawerOverlay = getElementById(DOM_IDS.DRAWER_OVERLAY);
         if (drawer && drawerOverlay) {

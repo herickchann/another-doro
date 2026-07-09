@@ -22,6 +22,7 @@ try {
         'index.html',
         'styles.css',
         'renderer.js',
+        'sw.js',
         'src',
         'assets'
     ];

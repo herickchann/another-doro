@@ -22,7 +22,8 @@ const IPC_CHANNELS = {
         'reset-timer',
         'add-goal',
         'tray-clicked',
-        'tray-right-clicked'
+        'tray-right-clicked',
+        'stop-alarm'
     ])
 };
 

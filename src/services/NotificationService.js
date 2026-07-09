@@ -1,15 +1,67 @@
 import { Environment } from '../utils/environment.js';
-import { ASSETS, ERROR_MESSAGES } from '../utils/constants.js';
+import { ASSETS } from '../utils/constants.js';
+import { ALARM_ALERT } from '../utils/strings.js';
 
 class NotificationServiceClass {
     constructor() {
         this.permissionRequested = false;
+        this.serviceWorkerRegistration = null;
+        this.activeTimerNotification = null;
+        this._stopAlarmCallback = null;
     }
 
     async initialize() {
-        // Request permission for web notifications if available
         if (Environment.capabilities.hasWebNotifications && !Environment.isElectron()) {
             await this._requestWebNotificationPermission();
+            await this._registerServiceWorker();
+            this._listenForServiceWorkerMessages();
+        }
+
+        if (Environment.isElectron()) {
+            Environment.onIPC('stop-alarm', () => {
+                this._stopAlarmCallback?.();
+            });
+        }
+    }
+
+    async _registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) {
+            return;
+        }
+
+        try {
+            this.serviceWorkerRegistration = await navigator.serviceWorker.register('sw.js');
+        } catch (error) {
+            console.warn('Service worker registration failed:', error);
+        }
+    }
+
+    _listenForServiceWorkerMessages() {
+        navigator.serviceWorker?.addEventListener('message', (event) => {
+            if (event.data?.type === 'stop-alarm') {
+                this._stopAlarmCallback?.();
+            }
+        });
+    }
+
+    setStopAlarmCallback(callback) {
+        this._stopAlarmCallback = callback;
+    }
+
+    closeTimerCompleteNotification() {
+        if (this.activeTimerNotification) {
+            this.activeTimerNotification.close();
+            this.activeTimerNotification = null;
+        }
+
+        if (this.serviceWorkerRegistration) {
+            this.serviceWorkerRegistration.getNotifications({ tag: 'timer-complete' })
+                .then((notifications) => {
+                    notifications.forEach((notification) => notification.close());
+                })
+                .catch((error) => {
+                    console.warn('Failed to close service worker notifications:', error);
+                });
         }
     }
 
@@ -54,7 +106,6 @@ class NotificationServiceClass {
     }
 
     async _showWebNotification(title, body, options) {
-        // Ensure we have permission
         const hasPermission = await this._requestWebNotificationPermission();
         if (!hasPermission) {
             console.log(`📢 ${title}: ${body}`);
@@ -62,16 +113,35 @@ class NotificationServiceClass {
         }
 
         try {
-            const notification = new Notification(title, {
+            const notificationOptions = {
                 body,
                 icon: options.icon || ASSETS.ICON,
                 tag: options.tag || 'pomodoro-timer',
-                requireInteraction: options.requireInteraction || false,
+                requireInteraction: options.requireInteraction ?? false,
                 silent: options.silent || false,
                 ...options
-            });
+            };
 
-            // Auto-close after delay if specified
+            if (options.actions) {
+                notificationOptions.actions = options.actions;
+            }
+
+            if (this.serviceWorkerRegistration) {
+                await this.serviceWorkerRegistration.showNotification(title, notificationOptions);
+                return true;
+            }
+
+            const notification = new Notification(title, notificationOptions);
+            this._trackTimerNotification(notification, options);
+
+            notification.onclick = () => {
+                if (options.stopOnClick) {
+                    this._stopAlarmCallback?.();
+                }
+                notification.close();
+                window.focus();
+            };
+
             if (options.autoClose) {
                 setTimeout(() => {
                     notification.close();
@@ -86,8 +156,18 @@ class NotificationServiceClass {
         }
     }
 
-    // Convenience methods for common notification types
-    async showTimerComplete(sessionType, nextSessionType = null) {
+    _trackTimerNotification(notification, options) {
+        if (options.tag === 'timer-complete') {
+            this.activeTimerNotification = notification;
+            notification.onclose = () => {
+                if (this.activeTimerNotification === notification) {
+                    this.activeTimerNotification = null;
+                }
+            };
+        }
+    }
+
+    async showTimerComplete(sessionType, nextSessionType = null, { onStop } = {}) {
         const notifications = {
             work: {
                 title: 'Work Session Complete!',
@@ -106,9 +186,21 @@ class NotificationServiceClass {
         };
 
         const notification = notifications[sessionType] || notifications.work;
+        const stopAction = {
+            action: 'stop-alarm',
+            title: ALARM_ALERT.NOTIFICATION_STOP_ACTION
+        };
+
+        if (onStop) {
+            this.setStopAlarmCallback(onStop);
+        }
+
         return await this.show(notification.title, notification.body, {
             tag: 'timer-complete',
-            autoClose: 5000
+            requireInteraction: true,
+            stopOnClick: true,
+            actions: [stopAction],
+            hasStopAction: true
         });
     }
 
@@ -179,14 +271,13 @@ class NotificationServiceClass {
         );
     }
 
-    // Check if notifications are supported and enabled
     isSupported() {
         return Environment.canShowNotifications();
     }
 
     hasPermission() {
         if (Environment.capabilities.hasNativeNotifications) {
-            return true; // Native notifications don't need explicit permission
+            return true;
         }
 
         if (Environment.capabilities.hasWebNotifications) {
@@ -206,5 +297,4 @@ class NotificationServiceClass {
     }
 }
 
-// Create singleton instance
-export const NotificationService = new NotificationServiceClass(); 
+export const NotificationService = new NotificationServiceClass();

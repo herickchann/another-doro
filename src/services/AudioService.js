@@ -9,6 +9,14 @@ class AudioServiceClass {
         this.volume = AUDIO_DEFAULTS.VOLUME;
         this.currentSound = AUDIO_DEFAULTS.DEFAULT_SOUND;
         this.isInitialized = false;
+        this.isPlaying = false;
+        this.isTestPlaying = false;
+        this._playAbortController = null;
+        this._testAbortController = null;
+        this._activeOscillator = null;
+        this._testOscillator = null;
+        this.testAudioElement = null;
+        this._stopListeners = new Set();
     }
 
     async initialize(settings = {}) {
@@ -82,33 +90,83 @@ class AudioServiceClass {
             return false;
         }
 
+        this._playAbortController = new AbortController();
+        this.isPlaying = true;
+
         try {
-            // Play the notification with looping
-            return await this._playWithLoops();
+            return await this._playWithLoops(this._playAbortController.signal);
         } catch (error) {
             console.error('Failed to play audio:', error);
             return false;
+        } finally {
+            this.isPlaying = false;
+            this._playAbortController = null;
         }
     }
 
-    async _playWithLoops() {
+    stop() {
+        if (this._playAbortController) {
+            this._playAbortController.abort();
+        }
+
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement.currentTime = 0;
+        }
+
+        if (this._activeOscillator) {
+            try {
+                this._activeOscillator.stop();
+            } catch {
+                // Oscillator may already be stopped
+            }
+            this._activeOscillator = null;
+        }
+
+        this.isPlaying = false;
+        this._notifyStopListeners();
+    }
+
+    onStop(callback) {
+        this._stopListeners.add(callback);
+        return () => this._stopListeners.delete(callback);
+    }
+
+    _notifyStopListeners() {
+        this._stopListeners.forEach((callback) => {
+            try {
+                callback();
+            } catch (error) {
+                console.error('Audio stop listener failed:', error);
+            }
+        });
+    }
+
+    async _playWithLoops(signal) {
         const loops = AUDIO_DEFAULTS.NOTIFICATION_LOOPS;
         let success = false;
 
         for (let i = 0; i < loops; i++) {
+            if (signal?.aborted) {
+                break;
+            }
+
             try {
                 if (this.audioElement) {
-                    success = await this._playAudioElement();
+                    success = await this._playAudioElement(signal);
                 } else if (this.audioContext) {
-                    success = await this._playTestBeep();
+                    success = await this._playTestBeep(signal);
                 } else {
                     console.log('🔔 Timer finished! (Audio not available)');
                     return false;
                 }
 
-                // Add delay between loops (except for the last one)
+                if (signal?.aborted) {
+                    break;
+                }
+
                 if (i < loops - 1 && success) {
-                    await this._delay(AUDIO_DEFAULTS.LOOP_DELAY);
+                    await this._delay(AUDIO_DEFAULTS.LOOP_DELAY, signal);
                 }
             } catch (error) {
                 console.error(`Failed to play audio loop ${i + 1}:`, error);
@@ -118,30 +176,40 @@ class AudioServiceClass {
         return success;
     }
 
-    async _playAudioElement() {
+    async _playAudioElement(signal) {
         try {
-            // Reset audio to beginning
             this.audioElement.currentTime = 0;
             this.audioElement.volume = this.volume;
 
-            // Attempt to play and wait for it to finish
             await this.audioElement.play();
 
-            // Wait for the audio to finish playing
             return new Promise((resolve) => {
-                const onEnded = () => {
+                const cleanup = () => {
                     this.audioElement.removeEventListener('ended', onEnded);
+                    this.audioElement.removeEventListener('error', onError);
+                    signal?.removeEventListener('abort', onAbort);
+                };
+
+                const onEnded = () => {
+                    cleanup();
                     resolve(true);
                 };
 
                 const onError = () => {
-                    this.audioElement.removeEventListener('error', onError);
-                    this.audioElement.removeEventListener('ended', onEnded);
+                    cleanup();
+                    resolve(false);
+                };
+
+                const onAbort = () => {
+                    this.audioElement.pause();
+                    this.audioElement.currentTime = 0;
+                    cleanup();
                     resolve(false);
                 };
 
                 this.audioElement.addEventListener('ended', onEnded, { once: true });
                 this.audioElement.addEventListener('error', onError, { once: true });
+                signal?.addEventListener('abort', onAbort, { once: true });
             });
         } catch (error) {
             if (error.name === 'NotAllowedError') {
@@ -153,15 +221,15 @@ class AudioServiceClass {
         }
     }
 
-    async _playTestBeep() {
+    async _playTestBeep(signal) {
         try {
-            // Resume audio context if suspended
             if (this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
             }
 
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
+            this._activeOscillator = oscillator;
 
             oscillator.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
@@ -169,52 +237,177 @@ class AudioServiceClass {
             oscillator.frequency.value = AUDIO_DEFAULTS.TEST_BEEP_FREQUENCY;
             oscillator.type = 'sine';
 
-            // Boost the test beep volume even more
             gainNode.gain.setValueAtTime(this.volume * 0.8, this.audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
 
             oscillator.start(this.audioContext.currentTime);
             oscillator.stop(this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
 
-            // Wait for the beep to finish
-            await this._delay(AUDIO_DEFAULTS.TEST_BEEP_DURATION * 1000);
+            await this._delay(AUDIO_DEFAULTS.TEST_BEEP_DURATION * 1000, signal);
+            this._activeOscillator = null;
 
-            return true;
+            return !signal?.aborted;
         } catch (error) {
             console.error('Test beep play error:', error);
+            this._activeOscillator = null;
             return false;
         }
     }
 
-    // Helper method to create delays
-    _delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    _delay(ms, signal) {
+        return new Promise((resolve) => {
+            if (signal?.aborted) {
+                resolve();
+                return;
+            }
+
+            const timeout = setTimeout(resolve, ms);
+            signal?.addEventListener('abort', () => {
+                clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+        });
     }
 
     async testSound(soundName = null) {
-        // Use specified sound or current sound for testing
-        const testSoundName = soundName || this.currentSound;
-
-        // Temporarily switch to the test sound if different
-        const originalSound = this.currentSound;
-        if (testSoundName !== this.currentSound) {
-            await this.changeSound(testSoundName);
-        }
-
-        // Play the test sound once without looping
-        const result = await this._playSingle();
-
-        // Restore original sound if we changed it
-        if (testSoundName !== originalSound) {
-            await this.changeSound(originalSound);
-        }
-
-        return result;
+        return await this.playTestSound(soundName || this.currentSound);
     }
 
     async testCurrentSound() {
-        // Test the currently selected sound
-        return await this.testSound(this.currentSound);
+        return await this.playTestSound(this.currentSound);
+    }
+
+    async playTestSound(soundName) {
+        if (!Environment.canPlayAudio()) {
+            return false;
+        }
+
+        this.stopTestSound();
+
+        this._testAbortController = new AbortController();
+        this.isTestPlaying = true;
+        const signal = this._testAbortController.signal;
+
+        try {
+            if (Environment.capabilities.hasAudioElement) {
+                return await this._playTestAudioElement(soundName, signal);
+            }
+
+            if (Environment.capabilities.hasAudioContext) {
+                if (!this.audioContext) {
+                    this._initializeAudioContext();
+                }
+                return await this._playTestBeepPreview(signal);
+            }
+
+            console.log('🔔 Test sound! (Audio not available)');
+            return false;
+        } catch (error) {
+            console.error('Failed to play test sound:', error);
+            return false;
+        } finally {
+            this.isTestPlaying = false;
+            this._testAbortController = null;
+        }
+    }
+
+    stopTestSound() {
+        if (this._testAbortController) {
+            this._testAbortController.abort();
+        }
+
+        if (this.testAudioElement) {
+            this.testAudioElement.pause();
+            this.testAudioElement.currentTime = 0;
+        }
+
+        if (this._testOscillator) {
+            try {
+                this._testOscillator.stop();
+            } catch {
+                // Oscillator may already be stopped
+            }
+            this._testOscillator = null;
+        }
+
+        this.isTestPlaying = false;
+    }
+
+    async _playTestAudioElement(soundName, signal) {
+        if (!this.testAudioElement) {
+            this.testAudioElement = new Audio();
+        }
+
+        this.testAudioElement.volume = this.volume;
+        this.testAudioElement.src = this._getAudioPath(soundName);
+        this.testAudioElement.currentTime = 0;
+
+        await this.testAudioElement.play();
+
+        return new Promise((resolve) => {
+            const cleanup = () => {
+                this.testAudioElement.removeEventListener('ended', onEnded);
+                this.testAudioElement.removeEventListener('error', onError);
+                signal.removeEventListener('abort', onAbort);
+            };
+
+            const onEnded = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            const onError = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            const onAbort = () => {
+                this.testAudioElement.pause();
+                this.testAudioElement.currentTime = 0;
+                cleanup();
+                resolve(false);
+            };
+
+            this.testAudioElement.addEventListener('ended', onEnded, { once: true });
+            this.testAudioElement.addEventListener('error', onError, { once: true });
+            signal.addEventListener('abort', onAbort, { once: true });
+        });
+    }
+
+    async _playTestBeepPreview(signal) {
+        try {
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            this._testOscillator = oscillator;
+
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+
+            oscillator.frequency.value = AUDIO_DEFAULTS.TEST_BEEP_FREQUENCY;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(this.volume * 0.8, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(
+                0.01,
+                this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION
+            );
+
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + AUDIO_DEFAULTS.TEST_BEEP_DURATION);
+
+            await this._delay(AUDIO_DEFAULTS.TEST_BEEP_DURATION * 1000, signal);
+            this._testOscillator = null;
+
+            return !signal.aborted;
+        } catch (error) {
+            console.error('Test beep preview error:', error);
+            this._testOscillator = null;
+            return false;
+        }
     }
 
     async _playSingle() {
@@ -328,6 +521,13 @@ class AudioServiceClass {
 
     // Cleanup method
     destroy() {
+        this.stopTestSound();
+
+        if (this.testAudioElement) {
+            this.testAudioElement.pause();
+            this.testAudioElement = null;
+        }
+
         if (this.audioElement) {
             this.audioElement.pause();
             this.audioElement = null;

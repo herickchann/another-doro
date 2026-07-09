@@ -134,6 +134,22 @@ function sendToRenderer(channel) {
 function createApplicationMenu() {
     const isMac = process.platform === 'darwin';
 
+    const editMenu = {
+        label: 'Edit',
+        submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            ...(isMac ? [{ role: 'pasteAndMatchStyle' }] : []),
+            { role: 'delete' },
+            { type: 'separator' },
+            { role: 'selectAll' }
+        ]
+    };
+
     const timerMenu = {
         label: 'Timer',
         submenu: [
@@ -188,6 +204,7 @@ function createApplicationMenu() {
                 { role: 'quit' }
             ]
         }]),
+        editMenu,
         timerMenu,
         {
             label: 'View',
@@ -404,14 +421,45 @@ app.on('before-quit', () => {
 });
 
 // IPC handlers for timer functionality
-ipcMain.handle('show-notification', async (event, title, body) => {
-    if (Notification.isSupported()) {
-        new Notification({
-            title: title,
-            body: body,
-            sound: true
-        }).show();
+ipcMain.handle('show-notification', async (event, title, body, options = {}) => {
+    if (!Notification.isSupported()) {
+        return;
     }
+
+    const notificationOptions = {
+        title,
+        body,
+        sound: true
+    };
+
+    if (options.hasStopAction) {
+        notificationOptions.actions = [{ type: 'button', text: 'Stop Alarm' }];
+    }
+
+    const notification = new Notification(notificationOptions);
+
+    const focusMainWindow = () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    };
+
+    if (options.hasStopAction) {
+        const stopAlarm = () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('stop-alarm');
+            }
+            focusMainWindow();
+        };
+
+        notification.on('action', stopAlarm);
+        notification.on('click', stopAlarm);
+    } else {
+        notification.on('click', focusMainWindow);
+    }
+
+    notification.show();
 });
 
 ipcMain.handle('update-tray-title', async (event, title) => {
