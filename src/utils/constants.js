@@ -1,3 +1,6 @@
+// App Metadata
+export const APP_VERSION = '1.0.12';
+
 // Timer Configuration
 export const TIMER_DEFAULTS = {
     WORK_DURATION: 25, // minutes
