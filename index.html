@@ -265,7 +265,10 @@
                                     </select>
                                 </div>
                                 <div class="setting-group">
-                                    <button class="btn btn-secondary" id="testSoundBtn">Test Sound</button>
+                                    <div class="sound-test-buttons">
+                                        <button class="btn btn-secondary" id="testSoundBtn" type="button">Test Sound</button>
+                                        <button class="btn btn-secondary sound-test-stop" id="stopTestSoundBtn" type="button" hidden>Stop</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -467,7 +470,8 @@
         </div>
 
         <footer class="app-footer">
-            <div class="copyright-text">© 2025 AnotherByte. All rights reserved.</div>
+            <div class="copyright-text" id="copyrightText">© 2026 AnotherByte. All rights reserved.</div>
+            <div class="app-version-text" id="appVersionText"></div>
         </footer>
         </div>
     </div>
@@ -501,6 +505,26 @@
             </div>
         </section>
     </aside>
+
+    <!-- Alarm Banner -->
+    <div class="alarm-alert" id="alarmAlert" hidden role="alert" aria-live="assertive">
+        <div class="alarm-alert__inner">
+            <div class="alarm-alert__animation" aria-hidden="true">
+                <span class="alarm-alert__ring alarm-alert__ring--1"></span>
+                <span class="alarm-alert__ring alarm-alert__ring--2"></span>
+                <span class="alarm-alert__bell">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                </span>
+            </div>
+            <p class="alarm-alert__message" id="alarmMessage">Session complete!</p>
+            <button class="btn alarm-alert__stop" id="stopAlarmBtn" type="button">
+                <span class="btn-text">Stop Alarm</span>
+            </button>
+        </div>
+    </div>
 
     <!-- Confirm Dialog -->
     <div class="confirm-overlay" id="confirmOverlay" role="alertdialog" aria-modal="true"

@@ -19,6 +19,11 @@ export const DOM_IDS = {
     MENU_BTN: 'menuBtn',
     SETTINGS_BTN: 'settingsBtn',
 
+    // Alarm Alert
+    ALARM_ALERT: 'alarmAlert',
+    ALARM_MESSAGE: 'alarmMessage',
+    STOP_ALARM_BTN: 'stopAlarmBtn',
+
     // Navigation Drawer (settings)
     SIDE_DRAWER: 'sideDrawer',
     DRAWER_OVERLAY: 'drawerOverlay',
@@ -52,6 +57,7 @@ export const DOM_IDS = {
     VOLUME_VALUE: 'volumeValue',
     SOUND_SELECTOR: 'soundSelector',
     TEST_SOUND_BTN: 'testSoundBtn',
+    STOP_TEST_SOUND_BTN: 'stopTestSoundBtn',
 
     // Update Settings
     AUTO_UPDATE_CHECK: 'autoUpdateCheck',
@@ -122,6 +128,10 @@ export const DOM_IDS = {
     CLEAR_ALL_SESSIONS: 'clearAllSessions',
     DEVTOOLS_TOGGLE: 'devtoolsToggle',
 
+    // App Footer
+    COPYRIGHT_TEXT: 'copyrightText',
+    APP_VERSION_TEXT: 'appVersionText',
+
     // Confirm Modal
     CONFIRM_OVERLAY: 'confirmOverlay',
     CONFIRM_DIALOG: 'confirmDialog',
@@ -142,6 +152,7 @@ export const CSS_CLASSES = {
     GOAL_TEXT: 'goal-text',
     GOAL_EDIT_INPUT: 'goal-edit-input',
     GOAL_DELETE: 'goal-delete',
+    GOAL_EDITING_ACTIVE: 'goal-editing-active',
     IS_BREAK: 'is-break',
     COMPLETED: 'completed',
 
@@ -156,6 +167,7 @@ export const CSS_CLASSES = {
     MODAL_OVERLAY: 'modal-overlay',
     MODAL: 'modal',
     SHOW: 'show',
+    VISIBLE: 'visible',
 
     // Tab Classes
     TAB_BUTTON: 'tab-button',

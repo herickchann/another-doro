@@ -1,5 +1,5 @@
 import { PROGRESS_RING, SESSION_TYPES } from '../../utils/constants.js';
-import { UI_TEXT } from '../../utils/strings.js';
+import { UI_TEXT, ALARM_ALERT } from '../../utils/strings.js';
 import { Environment } from '../../utils/environment.js';
 import { TimerDurationControl } from './TimerDurationControl.js';
 
@@ -11,6 +11,7 @@ export class TimerDisplay {
         this.isInitialized = false;
         this.durationControl = null;
         this.timer = null;
+        this.isAlarmDisplayActive = false;
 
         this._initializeElements();
         this._setupProgressRing();
@@ -58,6 +59,7 @@ export class TimerDisplay {
     // Update methods
     updateTime(currentTime) {
         if (!this.elements.timeDisplay) return;
+        if (this.isAlarmDisplayActive) return;
         if (this.durationControl?.shouldSkipTimeDisplayUpdate()) return;
 
         const minutes = Math.floor(currentTime / 60);
@@ -100,11 +102,51 @@ export class TimerDisplay {
     updateProgress(progress, sessionType) {
         if (!this.isInitialized || !this.elements.progressCircle) return;
 
-        const offset = this.circumference - (progress * this.circumference);
+        const displayProgress = this.isAlarmDisplayActive ? 1 : progress;
+        const offset = this.circumference - (displayProgress * this.circumference);
         this.elements.progressCircle.style.strokeDashoffset = offset;
 
-        // Update progress ring color based on session type
         this._updateProgressColor(sessionType);
+    }
+
+    showAlarmState(sessionType) {
+        this.isAlarmDisplayActive = true;
+
+        if (this.elements.timeDisplay) {
+            this.elements.timeDisplay.textContent = this._getAlarmClockText(sessionType);
+            this.elements.timeDisplay.classList.remove('changing', 'time--alarm-work', 'time--alarm-break');
+            this.elements.timeDisplay.classList.add('time--alarm-active');
+        }
+
+        if (this.elements.timerCircle) {
+            this.elements.timerCircle.classList.add('alarm-active');
+        }
+
+        this.updateProgress(1, sessionType);
+        this.updateButtonStates(false, false, true);
+        this.durationControl?.updateAdjustableState();
+    }
+
+    _getAlarmClockText(sessionType) {
+        if (sessionType === SESSION_TYPES.WORK) {
+            return ALARM_ALERT.CLOCK.WORK;
+        }
+        if (sessionType === SESSION_TYPES.LONG_BREAK) {
+            return ALARM_ALERT.CLOCK.LONG_BREAK;
+        }
+        return ALARM_ALERT.CLOCK.BREAK;
+    }
+
+    hideAlarmState() {
+        this.isAlarmDisplayActive = false;
+
+        if (this.elements.timeDisplay) {
+            this.elements.timeDisplay.classList.remove('time--alarm-active');
+        }
+
+        if (this.elements.timerCircle) {
+            this.elements.timerCircle.classList.remove('alarm-active');
+        }
     }
 
     _updateProgressColor(sessionType) {
@@ -126,10 +168,9 @@ export class TimerDisplay {
         }
     }
 
-    updateButtonStates(isRunning, isPaused) {
+    updateButtonStates(isRunning, isPaused, isDisabled = false) {
         if (!this.elements.startPauseBtn) return;
 
-        // Update start/pause button
         let buttonText = UI_TEXT.BUTTONS.START;
         if (isRunning) {
             buttonText = UI_TEXT.BUTTONS.PAUSE;
@@ -142,7 +183,13 @@ export class TimerDisplay {
             buttonTextElement.textContent = buttonText;
         }
 
-        // Update timer circle active state
+        [this.elements.startPauseBtn, this.elements.resetBtn, this.elements.skipBtn]
+            .forEach((button) => {
+                if (button) {
+                    button.disabled = isDisabled;
+                }
+            });
+
         if (this.elements.timerCircle) {
             if (isRunning) {
                 this.elements.timerCircle.classList.add('active');
@@ -221,6 +268,20 @@ export class TimerDisplay {
 
     // Full state update
     updateState(state) {
+        if (state.isAlarmRinging) {
+            this.showAlarmState(state.sessionType);
+            this.updateSessionType(state.sessionType);
+            this.updateSessionNumberVisibility(state.sessionType);
+            this.updateBreakLabel(state.sessionType);
+            if (state.sessionType === SESSION_TYPES.WORK) {
+                this.updateSessionNumber(state.sessionNumber ?? state.sessionCount + 1);
+            }
+            this.updateButtonStates(false, false, true);
+            this.durationControl?.updateAdjustableState();
+            return;
+        }
+
+        this.hideAlarmState();
         this.updateTime(state.currentTime);
         this.updateSessionType(state.sessionType);
         this.updateSessionNumberVisibility(state.sessionType);
@@ -229,7 +290,7 @@ export class TimerDisplay {
             this.updateSessionNumber(state.sessionNumber ?? state.sessionCount + 1);
         }
         this.updateProgress(state.progress, state.sessionType);
-        this.updateButtonStates(state.isRunning, state.isPaused);
+        this.updateButtonStates(state.isRunning, state.isPaused, false);
         this.durationControl?.updateAdjustableState();
     }
 

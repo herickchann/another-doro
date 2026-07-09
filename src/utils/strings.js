@@ -18,6 +18,7 @@ export const UI_TEXT = {
         SETTINGS: 'Settings',
         ADD_GOAL: '+ Add Goal',
         TEST_SOUND: 'Test Sound',
+        STOP_TEST_SOUND: 'Stop',
         CHECK_UPDATES: 'Check for Updates',
         DOWNLOAD_UPDATE: 'Download Update',
         INSTALL_NOW: 'Install Now',
@@ -30,7 +31,8 @@ export const UI_TEXT = {
         CLEAR_ALL: 'Clear all',
         NOT_NOW: 'Not Now',
         LATER: 'Later',
-        INSTALL: 'Install'
+        INSTALL: 'Install',
+        STOP_ALARM: 'Stop Alarm'
     },
     PLACEHOLDERS: {
         GOAL_INPUT: 'Enter your goal...',
@@ -40,6 +42,21 @@ export const UI_TEXT = {
     GOALS: {
         BREAK_NOTICE: 'Take a break — goals resume when it\'s time to focus.'
     }
+};
+
+export const ALARM_ALERT = {
+    MESSAGES: {
+        WORK_COMPLETE: (breakType) => `Work session complete! Time for a ${breakType}.`,
+        WORK_COMPLETE_DEFAULT: 'Work session complete! Time for a break.',
+        BREAK_COMPLETE: 'Break complete! Time to focus.',
+        LONG_BREAK_COMPLETE: 'Long break complete! Ready to start fresh.'
+    },
+    CLOCK: {
+        WORK: 'Complete!',
+        BREAK: 'Break Over!',
+        LONG_BREAK: 'Complete!'
+    },
+    NOTIFICATION_STOP_ACTION: 'Stop Alarm'
 };
 
 export const HISTORY_TEXT = {
@@ -264,7 +281,7 @@ export const HOTKEY_INSTRUCTIONS = {
 };
 
 // Copyright
-export const COPYRIGHT = '© 2025 AnotherByte. All rights reserved.';
+export const COPYRIGHT = '© 2026 AnotherByte. All rights reserved.';
 
 // Key Mappings for Display
 export const KEY_DISPLAY_MAP = {

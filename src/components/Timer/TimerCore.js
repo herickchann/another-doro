@@ -30,6 +30,8 @@ export class TimerCore extends EventEmitter {
         this.autoWork = settings.autoWork || false;
         this.breakType = settings.breakType || BREAK_TYPES.NORMAL;
         this.pendingSessionSeconds = null;
+        this.isAlarmRinging = false;
+        this.pendingNextSessionType = null;
 
         // Initialize timer
         this._setTimerForCurrentSession();
@@ -158,10 +160,12 @@ export class TimerCore extends EventEmitter {
         this.isPaused = false;
         clearInterval(this.timerInterval);
 
+        this.currentTime = 0;
+        this.isAlarmRinging = true;
+
         const previousSessionType = this.currentSessionType;
         const sessionDurationSeconds = this.totalTime;
 
-        // Add to total time spent
         this.totalTimeSpent += this.totalTime;
 
         let nextSessionType = '';
@@ -174,7 +178,7 @@ export class TimerCore extends EventEmitter {
             nextSessionType = SESSION_TYPES.WORK;
         }
 
-        this.currentSessionType = nextSessionType;
+        this.pendingNextSessionType = nextSessionType;
 
         this.emit('session:completed', {
             previousSessionType,
@@ -184,8 +188,18 @@ export class TimerCore extends EventEmitter {
             sessionCount: this.sessionCount,
             totalTimeSpent: this.totalTimeSpent
         });
+    }
 
-        // Reset timer for next session (defaults for new session type)
+    advanceAfterAlarm() {
+        if (!this.isAlarmRinging) {
+            return;
+        }
+
+        this.isAlarmRinging = false;
+        const nextSessionType = this.pendingNextSessionType;
+        this.pendingNextSessionType = null;
+        this.currentSessionType = nextSessionType;
+
         this.pendingSessionSeconds = null;
         this._setTimerForCurrentSession();
 
@@ -195,7 +209,6 @@ export class TimerCore extends EventEmitter {
             totalTime: this.totalTime
         });
 
-        // Auto-start next session if enabled
         if (this._shouldAutoStart(nextSessionType)) {
             setTimeout(() => {
                 this.start();
@@ -244,7 +257,7 @@ export class TimerCore extends EventEmitter {
     }
 
     canAdjustDuration() {
-        return !this.isRunning && !this.isPaused;
+        return !this.isRunning && !this.isPaused && !this.isAlarmRinging;
     }
 
     getSessionDurationSeconds() {
@@ -309,6 +322,7 @@ export class TimerCore extends EventEmitter {
         return {
             isRunning: this.isRunning,
             isPaused: this.isPaused,
+            isAlarmRinging: this.isAlarmRinging,
             currentTime: this.currentTime,
             totalTime: this.totalTime,
             sessionType: this.currentSessionType,

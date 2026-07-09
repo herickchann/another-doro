@@ -1,9 +1,9 @@
 // Unified renderer for both desktop and mobile environments
 import { Environment } from './src/utils/environment.js';
 import { Storage } from './src/utils/storage.js';
-import { SESSION_TYPES, UI_TIMING } from './src/utils/constants.js';
+import { SESSION_TYPES, UI_TIMING, APP_VERSION } from './src/utils/constants.js';
 import { DOM_IDS, getElementById } from './src/utils/domConstants.js';
-import { CONFIRMATIONS } from './src/utils/strings.js';
+import { CONFIRMATIONS, COPYRIGHT } from './src/utils/strings.js';
 import { NotificationService } from './src/services/NotificationService.js';
 import { AudioService } from './src/services/AudioService.js';
 import { TimerCore } from './src/components/Timer/TimerCore.js';
@@ -18,6 +18,7 @@ import { HotkeyManager } from './src/components/UI/HotkeyManager.js';
 import { LoadingScreen } from './src/components/UI/LoadingScreen.js';
 import { TrayManager } from './src/components/Electron/TrayManager.js';
 import { ConfirmModal } from './src/components/UI/ConfirmModal.js';
+import { AlarmAlert } from './src/components/UI/AlarmAlert.js';
 
 class PomodoroApp {
     constructor() {
@@ -34,6 +35,7 @@ class PomodoroApp {
         this.themeManager = null;
         this.hotkeyManager = null;
         this.loadingScreen = null;
+        this.alarmAlert = null;
 
         // Platform-specific components
         this.trayManager = null;
@@ -68,6 +70,8 @@ class PomodoroApp {
             console.log('Setting up event listeners...');
             this.setupEventListeners();
 
+            await this.initializeFooter();
+
             // Apply theme
             console.log('Applying theme...');
             this.applyTheme(this.currentTheme);
@@ -88,6 +92,28 @@ class PomodoroApp {
             console.error('Failed to initialize app:', error);
             console.error('Error stack:', error.stack);
             this.showFallbackMessage();
+        }
+    }
+
+    async initializeFooter() {
+        const copyrightEl = getElementById(DOM_IDS.COPYRIGHT_TEXT);
+        const versionEl = getElementById(DOM_IDS.APP_VERSION_TEXT);
+
+        if (copyrightEl) {
+            copyrightEl.textContent = COPYRIGHT;
+        }
+
+        let version = APP_VERSION;
+        if (Environment.canUseIPC()) {
+            try {
+                version = await Environment.invokeIPC('get-app-version');
+            } catch (error) {
+                console.warn('Failed to load app version:', error);
+            }
+        }
+
+        if (versionEl) {
+            versionEl.textContent = `v${version}`;
         }
     }
 
@@ -160,6 +186,7 @@ class PomodoroApp {
             this.goalsManager.initialize(this.currentGoals, this.timer.state.sessionType);
             this.statsDisplay = new StatsDisplay();
             this.statsDisplay.initialize(this.currentStats);
+            this.alarmAlert = new AlarmAlert();
             this.themeManager = new ThemeManager();
             this.themeManager.initialize(this.currentTheme);
 
@@ -224,16 +251,40 @@ class PomodoroApp {
         });
 
         this.timer.on('session:completed', async (data) => {
-            // Show notification
-            await NotificationService.showTimerComplete(data.previousSessionType, data.nextSessionType);
+            let alarmFinalized = false;
 
-            // Play sound
-            await AudioService.play();
+            const finalizeAlarm = () => {
+                if (alarmFinalized) {
+                    return;
+                }
+                alarmFinalized = true;
 
-            // Update display
-            this.refreshSessionUI();
+                this.alarmAlert?.hide();
+                NotificationService.closeTimerCompleteNotification();
+                NotificationService.setStopAlarmCallback(null);
+                this.display.hideAlarmState();
+                this.timer.advanceAfterAlarm();
+            };
 
-            // Save stats
+            const stopAlarm = () => {
+                AudioService.stop();
+                finalizeAlarm();
+            };
+
+            this.display.showAlarmState(data.previousSessionType);
+            this.alarmAlert?.show(data.previousSessionType, data.nextSessionType);
+            this.alarmAlert.onStop = stopAlarm;
+
+            await NotificationService.showTimerComplete(
+                data.previousSessionType,
+                data.nextSessionType,
+                { onStop: stopAlarm }
+            );
+
+            AudioService.play().then(finalizeAlarm);
+
+            this.updateTrayTitle();
+
             this.currentStats = {
                 completedSessions: data.completedSessions,
                 totalTimeSpent: data.totalTimeSpent,
@@ -242,8 +293,6 @@ class PomodoroApp {
             Storage.saveStats(this.currentStats);
             this.statsDisplay.updateStats(this.currentStats);
             this.recordSession(data.previousSessionType, data.sessionDurationSeconds, 'completed');
-
-            this.updateTrayTitle();
         });
 
         this.timer.on('session:skipped', async (data) => {
@@ -284,6 +333,9 @@ class PomodoroApp {
 
         // Display events
         this.display.onStartPause(() => {
+            if (this.timer.isAlarmRinging) {
+                return;
+            }
             if (this.timer.isRunning) {
                 this.timer.pause();
             } else {
@@ -292,10 +344,16 @@ class PomodoroApp {
         });
 
         this.display.onReset(() => {
+            if (this.timer.isAlarmRinging) {
+                return;
+            }
             this.timer.resetSession();
         });
 
         this.display.onSkip(() => {
+            if (this.timer.isAlarmRinging) {
+                return;
+            }
             this.timer.skip();
         });
 
@@ -532,7 +590,8 @@ class PomodoroApp {
             await this.trayManager.updateTimerDisplay(
                 this.timer.currentTime,
                 this.timer.isRunning,
-                this.timer.isPaused
+                this.timer.isPaused,
+                this.timer.isAlarmRinging
             );
         }
     }
